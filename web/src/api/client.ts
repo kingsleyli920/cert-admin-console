@@ -29,7 +29,7 @@ export interface ApiClientOptions {
 }
 
 /** Later sources win per header name; nothing is dropped. */
-function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
+function mergeHeaders(...sources: Array<RequestInit['headers']>): Headers {
   const merged = new Headers();
   for (const source of sources) {
     new Headers(source).forEach((value, name) => merged.set(name, value));
