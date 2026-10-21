@@ -32,6 +32,8 @@
 | Otherwise | issued | — |
 | Unexpected error thrown while issuing | failed | `internal_error` |
 
+**Run items**: an `issued` item references the new certificate; a `skipped` item with reason `already_issued` or `revoked` references the existing certificate (id + serial) so the result table can link to it; `not_completed` and `failed` items have `certificateId` and `serial` null.
+
 **Flow**: select course → view learner distribution (eligible / already issued / not completed / inactive) → confirm dialog → progress bar → result page (three counts + detail table, filterable by outcome).
 
 **Run page** `/t/:tid/bulk-issue/runs/:runId`: refreshing or reopening the page lets the user continue viewing progress. While a run is running, the issue button stays disabled.
