@@ -1,4 +1,6 @@
+import { SafetyCertificateOutlined, SendOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { App as AntApp, Button, Layout, Menu, Select, Space, Tag, theme, Typography } from 'antd';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { api } from '../api';
@@ -8,8 +10,8 @@ import { QueryState } from './QueryState';
 import { useCurrentTenant } from './useCurrentTenant';
 
 const SECTIONS = [
-  { key: 'certificates', label: 'Certificates' },
-  { key: 'bulk-issue', label: 'Bulk issue' },
+  { key: 'certificates', label: 'Certificates', icon: <SafetyCertificateOutlined aria-hidden /> },
+  { key: 'bulk-issue', label: 'Bulk issue', icon: <SendOutlined aria-hidden /> },
 ] as const;
 
 export function AppLayout() {
@@ -20,6 +22,9 @@ export function AppLayout() {
   const location = useLocation();
   const me = useQuery(meQuery);
   const tenant = useCurrentTenant();
+  // Below the lg breakpoint the sidebar becomes a 64px icon rail (labels in tooltips) instead of
+  // collapsing to 0px, which made antd float an expand tab over the page content.
+  const [narrow, setNarrow] = useState(false);
 
   // /t/:tid/<section>/...
   const current = location.pathname.split('/')[3];
@@ -72,13 +77,22 @@ export function AppLayout() {
         )}
       </Layout.Header>
       <Layout>
-        <Layout.Sider theme="light" width={200} breakpoint="lg" collapsedWidth={0}>
+        <Layout.Sider
+          theme="light"
+          width={200}
+          collapsedWidth={64}
+          breakpoint="lg"
+          collapsed={narrow}
+          onBreakpoint={setNarrow}
+          trigger={null}
+        >
           <Menu
             mode="inline"
             selectedKeys={[section]}
             style={{ height: '100%' }}
             items={SECTIONS.map((s) => ({
               key: s.key,
+              icon: s.icon,
               label: navTid ? <Link to={`/t/${navTid}/${s.key}`}>{s.label}</Link> : s.label,
             }))}
           />
