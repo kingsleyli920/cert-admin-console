@@ -5,6 +5,7 @@ import { healthResponseSchema } from '@cac/shared';
 import { sessionRoutes } from './modules/session/routes';
 import { registerErrorHandling } from './plugins/errors';
 import { registerSessionGuard } from './plugins/session';
+import { testResetRoute } from './plugins/test-reset';
 import { zodSerializerCompiler, zodValidatorCompiler } from './plugins/zod';
 
 export interface BuildAppOptions {
@@ -35,6 +36,7 @@ export async function buildApp(opts: BuildAppOptions) {
     async () => ({ status: 'ok' as const }),
   );
   await app.register(sessionRoutes);
+  if (app.appEnv === 'test') await app.register(testResetRoute);
 
   return app;
 }
