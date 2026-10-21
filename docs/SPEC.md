@@ -81,7 +81,7 @@ Real login / SSO, notifications, certificate PDF, re-issuing after revocation, a
 
 | Layer | Choice (major version) |
 |---|---|
-| Backend | Fastify 5 + @fastify/cookie 11 + zod 4 (call `safeParse` manually in handlers; no type-provider) + tsx 4 |
+| Backend | Fastify 5 + @fastify/cookie 11 + zod 4 + tsx 4. Zod schemas are plugged into Fastify through a small custom validator/serializer compiler (`server/src/plugins/zod.ts`; no third-party type provider): route `schema.body/querystring/params` are validated with the shared schemas, and responses are checked against their schema (mismatch → 500). |
 | DB | `node:sqlite` (built in, zero native dependencies). WAL mode. File `server/data/app.db` (gitignored). |
 | Frontend | React 19 + Vite 7 + antd 6 + React Router 7 (library mode) + TanStack Query 5 |
 | Shared | Workspace package `@cac/shared`: zod schemas, types, `formatInTenantTz`, CSV utilities. Exports TS source directly; no build step. |
