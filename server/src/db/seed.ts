@@ -1,8 +1,17 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { tenantLocalYear } from '@cac/shared';
 
+/** Widens numeric literals (`1` -> `number`) so ids work as default parameter values. */
+type WidenIds<T> = T extends number
+  ? number
+  : T extends readonly (infer U)[]
+    ? readonly WidenIds<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: WidenIds<T[K]> }
+      : T;
+
 // Fixed ids that tests can rely on. Everything else is derived deterministically.
-export const SEED_IDS = {
+const SEED_ID_LITERALS = {
   tenants: { hht: 1, sra: 2, lcl: 3, nhi: 4 },
   admins: { alice: 'alice', bob: 'bob', carol: 'carol' },
   courses: {
@@ -43,6 +52,7 @@ export const SEED_IDS = {
     sraRevoked: [103, 110],
   },
 } as const;
+export const SEED_IDS: WidenIds<typeof SEED_ID_LITERALS> = SEED_ID_LITERALS;
 
 // ---------------------------------------------------------------------------
 // Deterministic helpers
