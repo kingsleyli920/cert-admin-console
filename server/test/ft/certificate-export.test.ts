@@ -10,7 +10,7 @@ import { parseCsv } from '../helpers/csv';
 
 const { hht: HHT, sra: SRA, lcl: LCL, nhi: NHI } = SEED_IDS.tenants;
 const NOW = '2025-12-31T14:30:00.000Z'; // Sydney 2026-01-01 01:30 AEDT, Perth 2025-12-31 22:30 AWST
-const header = (timezone: string) => ['Learner Name', 'Course Title', 'Serial Number', `Issue Date (${timezone})`];
+const header = (timezone: string) => ['Learner Name', 'Course Title', 'Serial Number', `Issue Date (${timezone})`, 'Status'];
 /** An admin who manages each tenant. */
 const ADMIN_OF: Record<number, string> = { [HHT]: 'alice', [SRA]: 'alice', [NHI]: 'alice', [LCL]: 'bob' };
 /** A course of each tenant (HHT: Fire Safety 2026). */
@@ -95,6 +95,32 @@ describe('export equals list (T6)', () => {
     expect(emma.every((r) => r[0] === 'Emma Wilson')).toBe(true);
     expect(revoked).toBe(3);
     expect((await exportCsv(HHT, 'q=%25')).rows).toHaveLength(0);
+  });
+
+  describe('Status column', () => {
+    it('is the fifth column and is either Valid or Revoked', async () => {
+      const { head, rows } = await exportCsv(HHT);
+      expect(head[4]).toBe('Status');
+      for (const row of rows) {
+        expect(row).toHaveLength(5);
+        expect(['Valid', 'Revoked']).toContain(row[4]);
+      }
+    });
+
+    it('status=revoked exports only Revoked rows, status=valid only Valid rows', async () => {
+      const revoked = (await exportCsv(HHT, 'status=revoked')).rows;
+      expect(revoked).toHaveLength(3);
+      expect(revoked.every((r) => r[4] === 'Revoked')).toBe(true);
+      const valid = (await exportCsv(HHT, 'status=valid')).rows;
+      expect(valid).toHaveLength(42);
+      expect(valid.every((r) => r[4] === 'Valid')).toBe(true);
+    });
+
+    it('the unfiltered HHT export has 3 Revoked and 42 Valid rows', async () => {
+      const { rows } = await exportCsv(HHT);
+      expect(rows.filter((r) => r[4] === 'Revoked')).toHaveLength(3);
+      expect(rows.filter((r) => r[4] === 'Valid')).toHaveLength(42);
+    });
   });
 
   it('ignores page and pageSize', async () => {
@@ -182,8 +208,8 @@ describe('mutating exports', () => {
     insertCertificate(90003, '+1 555 / @home / -dash');
     const { res, rows } = await exportCsv(HHT, 'q=HHT-2026-9000', mut);
 
-    expect(res.body).toContain(`"'=HYPERLINK(""http://x"",""y"")",Fire Safety 2026,HHT-2026-90001,2026-06-01\r\n`);
-    expect(res.body).toContain(`"Smith, ""Jo""",Fire Safety 2026,HHT-2026-90002,2026-06-01\r\n`);
+    expect(res.body).toContain(`"'=HYPERLINK(""http://x"",""y"")",Fire Safety 2026,HHT-2026-90001,2026-06-01,Valid\r\n`);
+    expect(res.body).toContain(`"Smith, ""Jo""",Fire Safety 2026,HHT-2026-90002,2026-06-01,Valid\r\n`);
     expect(rows.map((r) => r[0]).sort()).toEqual(
       [`'=HYPERLINK("http://x","y")`, 'Smith, "Jo"', "'+1 555 / @home / -dash"].sort(),
     );
@@ -217,7 +243,7 @@ describe('mutating exports', () => {
     const serial = (mut.db.prepare('SELECT serial FROM certificates WHERE id = 2').get() as { serial: string }).serial;
     const after = await exportCsv(HHT, '', mut);
     expect(after.rows).toHaveLength(53);
-    expect(after.rows.some((r) => r[2] === serial)).toBe(true);
+    expect(after.rows.find((r) => r[2] === serial)?.[4]).toBe('Revoked');
     expect((await exportCsv(HHT, 'status=revoked', mut)).rows).toHaveLength(4);
   });
 });

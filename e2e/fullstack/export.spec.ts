@@ -34,8 +34,10 @@ test('alice exports all 45 HHT certificates as a Sydney-dated CSV', async ({ pag
   const csv = await downloadCsv(page, 'Export 45 rows');
 
   expect(csv.fileName).toMatch(/^certificates-HHT-\d{4}-\d{2}-\d{2}\.csv$/);
-  expect(csv.header).toBe('Learner Name,Course Title,Serial Number,Issue Date (Australia/Sydney)');
+  expect(csv.header).toBe('Learner Name,Course Title,Serial Number,Issue Date (Australia/Sydney),Status');
   expect(csv.rows).toHaveLength(45);
+  expect(csv.rows.filter((row) => row.endsWith(',Revoked'))).toHaveLength(3);
+  expect(csv.rows.filter((row) => row.endsWith(',Valid'))).toHaveLength(42);
 });
 
 test('the export follows the Revoked status filter and downloads only the 3 revoked rows', async ({ page }) => {
@@ -48,7 +50,7 @@ test('the export follows the Revoked status filter and downloads only the 3 revo
   const csv = await downloadCsv(page, 'Export 3 rows');
 
   expect(csv.rows).toHaveLength(3);
-  for (const row of csv.rows) expect(row).toMatch(/^[^,]*,[^,]*,HHT-\d{4}-\d{6},\d{4}-\d{2}-\d{2}$/);
+  for (const row of csv.rows) expect(row).toMatch(/^[^,]*,[^,]*,HHT-\d{4}-\d{6},\d{4}-\d{2}-\d{2},Revoked$/);
 });
 
 test('the SRA export is named for SRA, dated in Perth and has one row per listed certificate', async ({ page }) => {
@@ -61,6 +63,24 @@ test('the SRA export is named for SRA, dated in Perth and has one row per listed
   const csv = await downloadCsv(page, 'Export 15 rows');
 
   expect(csv.fileName).toMatch(/^certificates-SRA-\d{4}-\d{2}-\d{2}\.csv$/);
-  expect(csv.header).toMatch(/\(Australia\/Perth\)$/);
+  expect(csv.header).toMatch(/\(Australia\/Perth\),Status$/);
   expect(csv.rows).toHaveLength(15);
+});
+
+test('a certificate revoked in the UI is exported as Revoked', async ({ page }) => {
+  await openAs(page, 'Carol Smith');
+  await page.goto('/t/1/certificates/1');
+  const serial = (await page.getByRole('heading', { level: 2 }).innerText()).trim();
+  await page.getByRole('button', { name: 'Revoke certificate' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox', { name: 'Reason' }).fill('Duplicate record');
+  await dialog.getByRole('button', { name: 'Revoke', exact: true }).click();
+  await expect(page.getByTestId('status-tag').first()).toHaveText('Revoked');
+  await page.getByRole('link', { name: '← Certificates' }).click();
+
+  const csv = await downloadCsv(page, 'Export 45 rows');
+
+  expect(csv.rows.find((row) => row.includes(`,${serial},`))).toMatch(/,Revoked$/);
+  expect(csv.rows.filter((row) => row.endsWith(',Revoked'))).toHaveLength(4);
+  expect(csv.rows.filter((row) => row.endsWith(',Valid'))).toHaveLength(41);
 });

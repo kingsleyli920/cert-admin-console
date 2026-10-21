@@ -89,9 +89,10 @@ describe('LCL export at scale', () => {
     expect(res.headers.get('content-disposition')).toMatch(/^attachment; filename="certificates-LCL-\d{4}-\d{2}-\d{2}\.csv"$/);
     expect(text.startsWith(CSV_BOM)).toBe(true);
     const [head, ...rows] = parseCsv(text.slice(1));
-    expect(head).toEqual(['Learner Name', 'Course Title', 'Serial Number', 'Issue Date (Australia/Sydney)']);
+    expect(head).toEqual(['Learner Name', 'Course Title', 'Serial Number', 'Issue Date (Australia/Sydney)', 'Status']);
     expect(rows).toHaveLength(8000);
     expect(new Set(rows.map((r) => r[2])).size).toBe(8000);
+    for (const row of rows) expect(['Valid', 'Revoked']).toContain(row[4]);
     expect(elapsed).toBeLessThan(3000);
   });
 
@@ -171,12 +172,15 @@ describe('snapshot consistency (HHT, with filler so the file outgrows the socket
     expect(text.startsWith(CSV_BOM)).toBe(true);
     const [, ...snapshot] = parseCsv(text.slice(1));
     expect(snapshot).toHaveLength(BASE_VALID + FILLER); // no +8 from the run
-    expect(snapshot.some((r) => r[2] === revokedSerial)).toBe(true); // revoked after the export began
+    expect(snapshot.find((r) => r[2] === revokedSerial)?.[4]).toBe('Valid'); // revoked after the export began
+    expect(snapshot.every((r) => r[4] === 'Valid')).toBe(true);
 
     // A later export sees both changes: 8 issued, 1 revoked.
     const after = await fetchRows(1, 'alice', 'status=valid');
     expect(after).toHaveLength(1 + BASE_VALID + FILLER + 8 - 1);
     expect(after.some((r) => r[2] === revokedSerial)).toBe(false);
-    expect(await fetchRows(1, 'alice')).toHaveLength(1 + 45 + FILLER + 8);
+    const [, ...everything] = await fetchRows(1, 'alice');
+    expect(everything).toHaveLength(45 + FILLER + 8);
+    expect(everything.find((r) => r[2] === revokedSerial)?.[4]).toBe('Revoked');
   }, 60_000);
 });
