@@ -1,0 +1,37 @@
+{
+  "name": "cert-admin-console",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "predev": "node scripts/check-node.mjs",
+    "dev": "concurrently -k -n server,web -c blue,green \"npm run dev -w @cac/server\" \"npm run dev -w @cac/web\"",
+    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p server && tsc --noEmit -p web && tsc --noEmit -p e2e",
+    "test:be:unit": "vitest run --project be-unit",
+    "test:be:ft": "vitest run --project be-ft",
+    "test:e2e:api": "vitest run --project be-e2e",
+    "test:contract": "vitest run --project contract",
+    "test:fe:unit": "vitest run --project fe-unit",
+    "test:fe:ft": "vitest run --project fe-ft",
+    "test:e2e:web": "playwright test --project web-mock",
+    "test:e2e:ui": "playwright test --project fullstack",
+    "test:visual": "playwright test --project visual",
+    "test:be": "npm run test:be:unit && npm run test:be:ft && npm run test:e2e:api",
+    "test:fe": "npm run test:fe:unit && npm run test:fe:ft",
+    "test:all": "npm run test:be && npm run test:contract && npm run test:fe && npm run test:e2e:web && npm run test:e2e:ui && npm run test:visual"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "concurrently": "9.2.4",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  }
+}
