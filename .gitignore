@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+server/data/
+*.db
+*.db-wal
+*.db-shm
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.env
+.env.local
+.DS_Store
