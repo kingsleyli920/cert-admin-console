@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { errorResponseSchema, healthResponseSchema } from '@cac/shared';
-import { buildApp } from '../../src/app';
+import { buildTestApp } from '../helpers/app';
 import {
   ConflictError,
   IdempotencyKeyReusedError,
@@ -13,7 +13,7 @@ import {
 describe('GET /api/health', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildTestApp();
   });
   afterEach(() => app.close());
 
@@ -35,7 +35,7 @@ describe('GET /api/health', () => {
 describe('error handler', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildTestApp();
     app.get('/t/not-found', async () => {
       throw new NotFoundError('Certificate not found');
     });

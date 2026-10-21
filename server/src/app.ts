@@ -1,20 +1,38 @@
+import type { DatabaseSync } from 'node:sqlite';
+import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
+import { sessionRoutes } from './modules/session/routes';
 import { registerErrorHandling } from './plugins/errors';
 import { zodSerializerCompiler, zodValidatorCompiler } from './plugins/zod';
 
-export async function buildApp(opts: { logger?: boolean } = {}) {
+export interface BuildAppOptions {
+  db: DatabaseSync;
+  now?: () => Date;
+  appEnv?: string;
+  delayMs?: number;
+  logger?: boolean;
+}
+
+export async function buildApp(opts: BuildAppOptions) {
   const app = Fastify({ logger: opts.logger ?? false });
+
+  app.decorate('db', opts.db);
+  app.decorate('now', opts.now ?? (() => new Date()));
+  app.decorate('appEnv', opts.appEnv ?? 'development');
+  app.decorate('delayMs', opts.delayMs ?? 0);
 
   app.setValidatorCompiler(zodValidatorCompiler);
   app.setSerializerCompiler(zodSerializerCompiler);
   registerErrorHandling(app);
+  await app.register(cookie);
 
   app.get(
     '/api/health',
     { schema: { response: { 200: healthResponseSchema } } },
     async () => ({ status: 'ok' as const }),
   );
+  await app.register(sessionRoutes);
 
   return app;
 }
