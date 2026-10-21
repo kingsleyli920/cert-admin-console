@@ -3,7 +3,7 @@ import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
 import { bulkIssueRoutes } from './modules/bulk-issue/routes';
-import type { RunnerFaults } from './modules/bulk-issue/runner';
+import { BulkIssueRunner, type RunnerFaults } from './modules/bulk-issue/runner';
 import { certificateRoutes } from './modules/certificates/routes';
 import { courseRoutes } from './modules/courses/routes';
 import { sessionRoutes } from './modules/session/routes';
@@ -44,8 +44,12 @@ export async function buildApp(opts: BuildAppOptions) {
   await app.register(sessionRoutes);
   await app.register(certificateRoutes);
   await app.register(courseRoutes);
-  await app.register(bulkIssueRoutes, { faults: opts.faults });
-  if (app.appEnv === 'test') await app.register(testResetRoute);
+  const runner = new BulkIssueRunner(app, opts.faults);
+  // preClose (not onClose): the runner must stop before any onClose hook closes the database.
+  app.addHook('preClose', async () => runner.stop());
+  app.addHook('onReady', async () => runner.resumeAll());
+  await app.register(bulkIssueRoutes, { runner });
+  if (app.appEnv === 'test') await app.register(testResetRoute, { runner });
 
   return app;
 }

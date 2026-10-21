@@ -57,6 +57,15 @@ export class BulkIssueRunner {
     await Promise.all([...this.active.values()]);
   }
 
+  /**
+   * Test reset only: stop every loop, then accept new runs again. Without this a loop paused
+   * between items would wake up after the reset and process a new run that reused its id.
+   */
+  async drain(): Promise<void> {
+    await this.stop();
+    this.stopping = false;
+  }
+
   private async process(run: RunRow): Promise<void> {
     await new Promise<void>((resolve) => setImmediate(resolve)); // never run inline in the caller
     const { db } = this.app;

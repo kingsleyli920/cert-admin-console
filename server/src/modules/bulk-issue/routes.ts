@@ -4,7 +4,7 @@ import { bulkIssueRunResponseSchema, idempotencyKeySchema } from '@cac/shared';
 import { IdempotencyKeyReusedError, NotFoundError } from '../../plugins/errors';
 import { requireAdmin, requireTenant } from '../../plugins/session';
 import { courseExists, createRun, findRun, getRunView } from './repo';
-import { BulkIssueRunner, type RunnerFaults } from './runner';
+import type { BulkIssueRunner } from './runner';
 
 const issueHeadersSchema = z.object({ 'idempotency-key': idempotencyKeySchema });
 
@@ -16,15 +16,11 @@ function parseId(raw: unknown): number | null {
 }
 
 export interface BulkIssueRoutesOptions {
-  faults?: RunnerFaults;
+  runner: BulkIssueRunner;
 }
 
 export async function bulkIssueRoutes(app: FastifyInstance, opts: BulkIssueRoutesOptions): Promise<void> {
-  const runner = new BulkIssueRunner(app, opts.faults);
-
-  // preClose (not onClose): the runner must stop before any onClose hook closes the database.
-  app.addHook('preClose', async () => runner.stop());
-  app.addHook('onReady', async () => runner.resumeAll());
+  const { runner } = opts;
 
   app.post(
     '/api/tenants/:tid/courses/:cid/bulk-issue',
