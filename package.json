@@ -23,9 +23,10 @@
     "test:e2e:web": "playwright test --project web-mock",
     "test:e2e:ui": "playwright test --project fullstack",
     "test:visual": "playwright test --project visual",
-    "test:be": "npm run test:be:unit && npm run test:be:ft && npm run test:e2e:api",
-    "test:fe": "npm run test:fe:unit && npm run test:fe:ft",
-    "test:all": "npm run test:be && npm run test:contract && npm run test:fe && npm run test:e2e:web && npm run test:e2e:ui && npm run test:visual"
+    "test:be": "vitest run --project be-unit --project be-ft --project be-e2e --project contract",
+    "test:fe": "vitest run --project fe-unit --project fe-ft && npm run test:e2e:web",
+    "test:fast": "vitest run",
+    "test:all": "npm run typecheck && vitest run && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
