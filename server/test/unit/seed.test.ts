@@ -62,18 +62,24 @@ describe('seed data invariants', () => {
       expect(countIn('courses', SRA)).toBe(3);
       expect(countIn('certificates', SRA)).toBe(15);
     });
-    it('has exactly the 4 tenants and 2 admins with the documented ownership', () => {
+    it('has exactly the 4 tenants and 3 admins with the documented ownership', () => {
       expect(rows('SELECT code, timezone FROM tenants ORDER BY id')).toEqual([
         { code: 'HHT', timezone: 'Australia/Sydney' },
         { code: 'SRA', timezone: 'Australia/Perth' },
         { code: 'LCL', timezone: 'Australia/Sydney' },
         { code: 'NHI', timezone: 'Australia/Brisbane' },
       ]);
+      expect(rows('SELECT id, name FROM admins ORDER BY id')).toEqual([
+        { id: 'alice', name: 'Alice Nguyen' },
+        { id: 'bob', name: 'Bob Fraser' },
+        { id: 'carol', name: 'Carol Smith' },
+      ]);
       expect(rows('SELECT admin_id, tenant_id FROM admin_tenants ORDER BY admin_id, tenant_id')).toEqual([
         { admin_id: 'alice', tenant_id: 1 },
         { admin_id: 'alice', tenant_id: 2 },
         { admin_id: 'alice', tenant_id: 4 },
         { admin_id: 'bob', tenant_id: 3 },
+        { admin_id: 'carol', tenant_id: 1 },
       ]);
     });
   });

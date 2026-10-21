@@ -4,7 +4,7 @@ import { tenantLocalYear } from '@cac/shared';
 // Fixed ids that tests can rely on. Everything else is derived deterministically.
 export const SEED_IDS = {
   tenants: { hht: 1, sra: 2, lcl: 3, nhi: 4 },
-  admins: { alice: 'alice', bob: 'bob' },
+  admins: { alice: 'alice', bob: 'bob', carol: 'carol' },
   courses: {
     fireSafety2026: 101,
     manualHandling: 102,
@@ -145,6 +145,7 @@ const TENANTS: TenantRow[] = [
 const ADMINS: Array<{ id: string; name: string }> = [
   { id: 'alice', name: 'Alice Nguyen' },
   { id: 'bob', name: 'Bob Fraser' },
+  { id: 'carol', name: 'Carol Smith' },
 ];
 
 // [admin_id, tenant_id]
@@ -153,6 +154,7 @@ const ADMIN_TENANTS: Array<[string, number]> = [
   ['alice', 2],
   ['bob', 3],
   ['alice', 4],
+  ['carol', 1],
 ];
 
 const HHT_LEARNERS: Array<[number, string, LearnerStatus]> = [

@@ -16,6 +16,7 @@ describe('GET /api/admins', () => {
     expect(adminsResponseSchema.parse(res.json()).items).toEqual([
       { id: 'alice', name: 'Alice Nguyen' },
       { id: 'bob', name: 'Bob Fraser' },
+      { id: 'carol', name: 'Carol Smith' },
     ]);
   });
 });

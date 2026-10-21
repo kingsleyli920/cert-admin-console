@@ -42,7 +42,7 @@ describe('session over a real server process', () => {
 
   it('lists admins, then lets alice use her cookie for /api/me', async () => {
     const admins = adminsResponseSchema.parse(await (await fetch(`${server.url}/api/admins`)).json());
-    expect(admins.items.map((a) => a.id)).toEqual(['alice', 'bob']);
+    expect(admins.items.map((a) => a.id)).toEqual(['alice', 'bob', 'carol']);
 
     const cookie = await signIn(server, 'alice');
     const res = await fetch(`${server.url}/api/me`, { headers: { cookie } });
