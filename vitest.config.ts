@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-const node = { environment: 'node' } as const;
+const node = { environment: 'node' as const };
 const jsdom = {
-  environment: 'jsdom',
+  environment: 'jsdom' as const,
   setupFiles: ['web/src/test/setup.ts'],
-} as const;
+};
 
 export default defineConfig({
   test: {
