@@ -62,8 +62,9 @@
 - Revoke opens a confirmation dialog and requires a reason.
 
 **CSV**
-- Columns fixed: `Learner Name, Course Title, Serial Number, Issue Date`.
+- Columns fixed: `Learner Name, Course Title, Serial Number, Issue Date, Status`.
 - `Issue Date` is the tenant-local calendar date, `YYYY-MM-DD`. Its header names the tenant's IANA timezone, e.g. `Issue Date (Australia/Sydney)` for HHT, `Issue Date (Australia/Perth)` for SRA.
+- `Status` is `Valid` or `Revoked`, the same labels as the UI.
 - Filters are the same as the list. Not paginated.
 - Streamed output. UTF-8 BOM. RFC 4180 escaping. Cells starting with `= + - @` are prefixed with `'`.
 - File name: `certificates-{CODE}-{local date}.csv`.

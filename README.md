@@ -5,7 +5,7 @@ Internal admin console for a multi-tenant corporate training platform. Tenant ad
 - **List** course-completion certificates with search, filters, sorting and URL-synced state.
 - **Bulk-issue** certificates for a course. Re-running is idempotent, and an interrupted run resumes after a server restart.
 - **Inspect and revoke** a certificate, with an audit timeline.
-- **Export** the filtered list as a streamed CSV.
+- **Export** the filtered list as a streamed CSV (learner, course, serial, issue date, status).
 
 Sign-in is simulated with demo accounts. There is no real authentication (see [Assumptions and non-goals](#assumptions-and-non-goals)).
 
