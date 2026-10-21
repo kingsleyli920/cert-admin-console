@@ -13,7 +13,10 @@ interface ExportRow {
   course_title: string;
   serial: string;
   issued_at: string;
+  status: 'valid' | 'revoked';
 }
+
+const STATUS_LABEL: Record<ExportRow['status'], string> = { valid: 'Valid', revoked: 'Revoked' };
 
 export function exportFileName(tenant: TenantRow, now: Date): string {
   return `certificates-${tenant.code}-${tenantLocalDate(now.toISOString(), tenant.timezone)}.csv`;
@@ -39,18 +42,18 @@ export function certificateCsvStream(
     try {
       const q = buildCertificateQuery(tenant.id, filters);
       const stmt = conn.db.prepare(
-        `SELECT l.name AS learner_name, co.title AS course_title, c.serial, c.issued_at
+        `SELECT l.name AS learner_name, co.title AS course_title, c.serial, c.issued_at, c.status
            ${q.from}
           WHERE ${q.where}
           ORDER BY ${q.orderBy}`,
       );
-      yield CSV_BOM + csvRow(['Learner Name', 'Course Title', 'Serial Number', `Issue Date (${tenant.timezone})`]);
+      yield CSV_BOM + csvRow(['Learner Name', 'Course Title', 'Serial Number', `Issue Date (${tenant.timezone})`, 'Status']);
 
       let batch = '';
       let rows = 0;
       for (const row of stmt.iterate(...q.params) as IterableIterator<unknown>) {
         const r = row as ExportRow;
-        batch += csvRow([r.learner_name, r.course_title, r.serial, tenantLocalDate(r.issued_at, tenant.timezone)]);
+        batch += csvRow([r.learner_name, r.course_title, r.serial, tenantLocalDate(r.issued_at, tenant.timezone), STATUS_LABEL[r.status]]);
         if (++rows % BATCH_ROWS === 0) {
           yield batch;
           batch = '';
