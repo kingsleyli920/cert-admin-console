@@ -1,3 +1,4 @@
+import { DownloadOutlined } from '@ant-design/icons';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Button, Empty, Typography } from 'antd';
 import { useEffect } from 'react';
@@ -7,6 +8,7 @@ import { QueryState } from '../components/QueryState';
 import { useCurrentTenant } from '../components/useCurrentTenant';
 import { CertificatesTable } from './certificates/CertificatesTable';
 import { CertificatesToolbar } from './certificates/CertificatesToolbar';
+import { exportCsvUrl } from './certificates/exportUrl';
 import { useCertificateFilters } from './certificates/useCertificateFilters';
 
 export function CertificatesPage() {
@@ -57,6 +59,16 @@ function CertificatesContent({ tid, timeZone }: { tid: number; timeZone: string 
           <Typography.Text type="secondary">
             {data.total} {data.total === 1 ? 'certificate' : 'certificates'}
           </Typography.Text>
+        )}
+        {data && !noCertificatesYet && (
+          <Button
+            href={exportCsvUrl(tid, filters)}
+            icon={<DownloadOutlined aria-hidden />}
+            disabled={data.total === 0}
+            style={{ marginLeft: 'auto' }}
+          >
+            {`Export ${data.total} ${data.total === 1 ? 'row' : 'rows'}`}
+          </Button>
         )}
       </div>
       {!noCertificatesYet && <CertificatesToolbar tid={tid} filters={filters} onChange={setFilters} />}
