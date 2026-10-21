@@ -36,7 +36,8 @@ export default defineConfig({
         PORT: String(port),
         APP_ENV: 'test',
         DB_PATH: `test-results/e2e-${port}.db`,
-        BULK_ISSUE_DELAY_MS: '0',
+        // 0 keeps tests fast; set it (e.g. 150) to watch progress when recording a demo.
+        BULK_ISSUE_DELAY_MS: process.env.BULK_ISSUE_DELAY_MS ?? '0',
       },
     },
     {
