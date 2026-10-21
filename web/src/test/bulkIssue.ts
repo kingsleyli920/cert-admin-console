@@ -91,7 +91,12 @@ export interface BulkIssueBackend {
  * (id -> processed count).
  */
 export function mockBulkIssueBackend(
-  opts: { post?: PostBehaviour[]; preloaded?: Record<number, number>; courses?: CourseSummary[] } = {},
+  opts: {
+    post?: PostBehaviour[];
+    preloaded?: Record<number, number>;
+    courses?: CourseSummary[];
+    postDelayMs?: number;
+  } = {},
 ): BulkIssueBackend {
   const backend: BulkIssueBackend = { posts: [], gets: [] };
   const behaviours = [...(opts.post ?? [])];
@@ -100,9 +105,10 @@ export function mockBulkIssueBackend(
 
   server.use(
     http.get('/api/tenants/:tid/courses', () => HttpResponse.json({ items: opts.courses ?? [fireSafety] })),
-    http.post('/api/tenants/:tid/courses/:cid/bulk-issue', ({ request, params }) => {
+    http.post('/api/tenants/:tid/courses/:cid/bulk-issue', async ({ request, params }) => {
       const key = request.headers.get('idempotency-key');
       backend.posts.push({ tid: Number(params.tid), courseId: Number(params.cid), key });
+      if (opts.postDelayMs) await new Promise((r) => setTimeout(r, opts.postDelayMs));
       const next = behaviours.shift() ?? 'ok';
       if (next === 'network-error') return HttpResponse.error();
       if (next !== 'ok') {
