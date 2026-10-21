@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { errorResponseSchema, meResponseSchema } from '@cac/shared';
 import { requireTenant } from '../../src/plugins/session';
+import { describeAccessMatrix } from '../helpers/access-matrix';
 import { buildTestApp, signIn } from '../helpers/app';
 
 let app: FastifyInstance;
@@ -74,46 +75,12 @@ describe('GET /api/me', () => {
   });
 });
 
-describe('tenant guard on /api/tenants/:tid/*', () => {
-  it('lets alice into tenant 1 and exposes the tenant on the request', async () => {
-    const cookie = await signIn(app, 'alice');
-    const res = await app.inject({ method: 'GET', url: '/api/tenants/1/ping', headers: { cookie } });
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({
-      admin: 'alice',
-      tenant: { id: 1, code: 'HHT', name: 'Harbour Health Training', timezone: 'Australia/Sydney' },
-    });
-  });
-
-  it('answers 404 NOT_FOUND (not 403) when alice asks for bob\'s tenant 3', async () => {
-    const cookie = await signIn(app, 'alice');
-    const res = await app.inject({ method: 'GET', url: '/api/tenants/3/ping', headers: { cookie } });
-    expect(res.statusCode).toBe(404);
-    expect(errorCode(res.json())).toBe('NOT_FOUND');
-  });
-
-  it('answers 404 for bob asking for alice\'s tenant 1', async () => {
-    const cookie = await signIn(app, 'bob');
-    const res = await app.inject({ method: 'GET', url: '/api/tenants/1/ping', headers: { cookie } });
-    expect(res.statusCode).toBe(404);
-  });
-
-  it.each(['999', 'abc', '0', '-1', '1.5', '1abc', '01', '1e0', '99999999999999999999'])(
-    'answers 404 (not 400) for tenant id %s so ids cannot be probed',
-    async (tid) => {
-      const cookie = await signIn(app, 'alice');
-      const res = await app.inject({ method: 'GET', url: `/api/tenants/${tid}/ping`, headers: { cookie } });
-      expect(res.statusCode).toBe(404);
-      expect(errorCode(res.json())).toBe('NOT_FOUND');
-    },
-  );
-
-  it('answers 401 without a cookie, even for a tenant id that does not exist', async () => {
-    for (const tid of ['1', '999', 'abc']) {
-      const res = await app.inject({ method: 'GET', url: `/api/tenants/${tid}/ping` });
-      expect(res.statusCode).toBe(401);
-    }
-  });
+// Every (admin, tenant) pair, malformed ids and the no-session case; see helpers/access-matrix.ts.
+describeAccessMatrix('GET /api/tenants/:tid/ping', () => app, {
+  expectAllowed: (res, { admin, tenant }) => {
+    // The guard resolved the right tenant (code + timezone), not just any allowed one.
+    expect(res.json()).toEqual({ admin, tenant });
+  },
 });
 
 describe('public routes', () => {
