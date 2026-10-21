@@ -1,61 +1,77 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { errorResponseSchema } from '@cac/shared';
+import { certificateListResponseSchema, coursesResponseSchema } from '@cac/shared';
 import { SEED_IDS } from '../../src/db/seed';
 import { buildTestApp, signIn } from '../helpers/app';
+import { describeAccessMatrix } from '../helpers/access-matrix';
 
-const { hht: HHT, sra: SRA, lcl: LCL, nhi: NHI } = SEED_IDS.tenants;
+const { hht: HHT, sra: SRA } = SEED_IDS.tenants;
 
-// carol (second HHT admin) is not in the seed yet; add her rows when she lands.
 let app: FastifyInstance;
-let alice: string;
-let bob: string;
 beforeAll(async () => {
   app = await buildTestApp();
-  alice = await signIn(app, 'alice');
-  bob = await signIn(app, 'bob');
 });
 afterAll(() => app.close());
 
-describe('tenant isolation on the new routes', () => {
-  const routes = ['certificates', 'courses'];
+/** Seed truth per tenant code (SPEC §4). */
+const CERTIFICATE_TOTALS: Record<string, number> = { HHT: 45, SRA: 15, LCL: 8000, NHI: 0 };
+const COURSE_COUNTS: Record<string, number> = { HHT: 4, SRA: 3, LCL: 20, NHI: 2 };
 
-  it.each(routes)('%s: alice asking for LCL gets 404', async (route) => {
-    const res = await app.inject({ method: 'GET', url: `/api/tenants/${LCL}/${route}`, headers: { cookie: alice } });
-    expect(res.statusCode).toBe(404);
-    expect(errorResponseSchema.parse(res.json()).error.code).toBe('NOT_FOUND');
-  });
-
-  it.each(routes.flatMap((r) => [HHT, SRA, NHI].map((t) => [r, t] as const)))(
-    '%s: bob asking for tenant %i gets 404',
-    async (route, tid) => {
-      const res = await app.inject({ method: 'GET', url: `/api/tenants/${tid}/${route}`, headers: { cookie: bob } });
-      expect(res.statusCode).toBe(404);
-    },
-  );
-
-  it.each(routes)('%s: no cookie gets 401', async (route) => {
-    for (const tid of ['1', '3', '999']) {
-      const res = await app.inject({ method: 'GET', url: `/api/tenants/${tid}/${route}` });
-      expect(res.statusCode).toBe(401);
-      expect(errorResponseSchema.parse(res.json()).error.code).toBe('UNAUTHORIZED');
+describeAccessMatrix('GET /api/tenants/:tid/certificates', () => app, {
+  expectAllowed: (res, { tenant }) => {
+    const body = certificateListResponseSchema.parse(res.json());
+    expect(body.total).toBe(CERTIFICATE_TOTALS[tenant.code]);
+    expect(body.items).toHaveLength(Math.min(body.total, 20));
+    for (const item of body.items) {
+      expect(item.serial.startsWith(`${tenant.code}-`), `${item.serial} in ${tenant.code}`).toBe(true);
     }
+  },
+});
+
+describeAccessMatrix('GET /api/tenants/:tid/courses', () => app, {
+  expectAllowed: (res, { tenant }) => {
+    const { items } = coursesResponseSchema.parse(res.json());
+    expect(items).toHaveLength(COURSE_COUNTS[tenant.code]);
+  },
+});
+
+describe('resources of another tenant addressed through an allowed tenant id', () => {
+  const get = (cookie: string, url: string) => app.inject({ method: 'GET', url, headers: { cookie } });
+
+  it('filtering HHT by an SRA course id matches nothing', async () => {
+    const alice = await signIn(app, 'alice');
+    const res = await get(alice, `/api/tenants/${HHT}/certificates?courseId=${SEED_IDS.courses.sraFoodSafetyBasics}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(certificateListResponseSchema.parse(res.json())).toMatchObject({ items: [], total: 0 });
   });
 
-  it.each(routes.flatMap((r) => ['abc', '0', '-1', '1abc', '999'].map((t) => [r, t] as const)))(
-    '%s: malformed or unknown tenant id %s gets 404',
-    async (route, tid) => {
-      const res = await app.inject({ method: 'GET', url: `/api/tenants/${tid}/${route}`, headers: { cookie: alice } });
-      expect(res.statusCode).toBe(404);
-    },
-  );
+  it('the same search text finds different learners in HHT and SRA', async () => {
+    const alice = await signIn(app, 'alice');
+    const learnerIds = async (tid: number) => {
+      const res = await get(alice, `/api/tenants/${tid}/certificates?q=Emma%20Wilson&pageSize=100`);
+      return new Set(certificateListResponseSchema.parse(res.json()).items.map((i) => i.learnerId));
+    };
 
-  it('an invalid query on a forbidden tenant is still 404, not 400', async () => {
-    const res = await app.inject({
-      method: 'GET',
-      url: `/api/tenants/${LCL}/certificates?pageSize=999`,
-      headers: { cookie: alice },
-    });
-    expect(res.statusCode).toBe(404);
+    expect(await learnerIds(HHT)).toEqual(new Set([1001]));
+    expect(await learnerIds(SRA)).toEqual(new Set([2001]));
+  });
+});
+
+describe('two admins of the same tenant', () => {
+  it('carol sees exactly the HHT page alice sees for the same query', async () => {
+    const [alice, carol] = [await signIn(app, 'alice'), await signIn(app, 'carol')];
+    const url = `/api/tenants/${HHT}/certificates?sort=learnerName&order=asc&page=2&pageSize=10`;
+
+    const [forAlice, forCarol] = await Promise.all(
+      [alice, carol].map(async (cookie) => {
+        const res = await app.inject({ method: 'GET', url, headers: { cookie } });
+        expect(res.statusCode).toBe(200);
+        return certificateListResponseSchema.parse(res.json());
+      }),
+    );
+
+    expect(forAlice.items).toHaveLength(10);
+    expect(forCarol).toEqual(forAlice);
   });
 });
