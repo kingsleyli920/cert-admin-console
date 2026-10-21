@@ -1,4 +1,4 @@
-import type { AuditEntry, CertificateDetail } from '@cac/shared';
+import type { AdminSummary, AuditEntry, CertificateDetail } from '@cac/shared';
 import { http, HttpResponse } from 'msw';
 import { DST_EDGE } from './certificates';
 import { alice, carol } from './fixtures';
@@ -71,6 +71,24 @@ export const validSra: CertificateDetail = {
   audit: [{ ...issueEntry(4, 200, 90), courseId: 4, learnerId: 2000 }],
 };
 
+function applyRevoke(cert: CertificateDetail, actor: AdminSummary, reason: string) {
+  const at = '2026-04-07T01:00:00.000Z';
+  cert.status = 'revoked';
+  cert.revokedAt = at;
+  cert.revokedBy = actor;
+  cert.revokeReason = reason;
+  cert.audit.push({
+    id: 900 + cert.audit.length,
+    action: 'REVOKE',
+    actor,
+    createdAt: at,
+    certificateId: cert.id,
+    courseId: cert.courseId,
+    learnerId: cert.learnerId,
+    runId: null,
+  });
+}
+
 export interface DetailBackend {
   /** Parsed JSON body of every revoke POST, in order. */
   revokes: unknown[];
@@ -78,6 +96,10 @@ export interface DetailBackend {
   detailRequests: number;
   /** While set, revoke POSTs fail with this status/code/message. */
   failRevoke?: { status: number; code: string; message: string };
+  /** While set, detail GETs fail with a 500 carrying this message. */
+  failDetail?: string;
+  /** When set, the next revoke finds the certificate already revoked by carol (a concurrent admin). */
+  revokeElsewhere?: boolean;
   /** The actor recorded on a successful revoke. */
   actor: typeof alice;
 }
@@ -102,6 +124,12 @@ export function mockDetailBackend(
   server.use(
     http.get('/api/tenants/:tid/certificates/:id', ({ params }) => {
       backend.detailRequests++;
+      if (backend.failDetail) {
+        return HttpResponse.json(
+          { error: { code: 'INTERNAL_ERROR', message: backend.failDetail } },
+          { status: 500 },
+        );
+      }
       const cert = find(params.tid, params.id);
       return cert ? HttpResponse.json(cert) : notFound();
     }),
@@ -115,27 +143,14 @@ export function mockDetailBackend(
       }
       const cert = find(params.tid, params.id);
       if (!cert) return notFound();
+      if (backend.revokeElsewhere && cert.status === 'valid') applyRevoke(cert, carol, 'Duplicate');
       if (cert.status === 'revoked') {
         return HttpResponse.json(
           { error: { code: 'ALREADY_REVOKED', message: 'Certificate already revoked' } },
           { status: 409 },
         );
       }
-      const at = '2026-04-07T01:00:00.000Z';
-      cert.status = 'revoked';
-      cert.revokedAt = at;
-      cert.revokedBy = backend.actor;
-      cert.revokeReason = (body as { reason: string }).reason;
-      cert.audit.push({
-        id: 900 + cert.audit.length,
-        action: 'REVOKE',
-        actor: backend.actor,
-        createdAt: at,
-        certificateId: cert.id,
-        courseId: cert.courseId,
-        learnerId: cert.learnerId,
-        runId: null,
-      });
+      applyRevoke(cert, backend.actor, (body as { reason: string }).reason);
       return HttpResponse.json(cert);
     }),
   );
