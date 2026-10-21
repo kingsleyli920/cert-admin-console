@@ -6,6 +6,7 @@ const config = loadConfig();
 const db = initDatabase(config.dbPath, { seed: true });
 const app = await buildApp({
   db,
+  dbPath: config.dbPath,
   appEnv: config.appEnv,
   delayMs: config.bulkIssueDelayMs,
   logger: config.appEnv !== 'test',

@@ -9,6 +9,7 @@ import {
 } from '@cac/shared';
 import { NotFoundError } from '../../plugins/errors';
 import { requireAdmin, requireTenant } from '../../plugins/session';
+import { certificateCsvStream, exportFileName } from './export';
 import { getCertificateDetail, listCertificates, revokeCertificate } from './repo';
 
 type RevokeRequest = z.infer<typeof revokeRequestSchema>;
@@ -42,6 +43,21 @@ export async function certificateRoutes(app: FastifyInstance, opts: { faults?: C
       const query = request.query;
       const { items, total } = listCertificates(app.db, requireTenant(request).id, query);
       return { items, total, page: query.page, pageSize: query.pageSize };
+    },
+  );
+
+  // Static segment: find-my-way prefers it over the `/:id` route below, whatever the order.
+  app.get<{ Querystring: CertificateListQuery }>(
+    '/api/tenants/:tid/certificates/export.csv',
+    { schema: { querystring: certificateListQuerySchema } },
+    async (request, reply) => {
+      const tenant = requireTenant(request);
+      const { page: _page, pageSize: _pageSize, ...filters } = request.query; // export is not paginated
+      return reply
+        .header('content-type', 'text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="${exportFileName(tenant, app.now())}"`)
+        .header('cache-control', 'no-store')
+        .send(certificateCsvStream(app.db, app.dbPath, tenant, filters));
     },
   );
 

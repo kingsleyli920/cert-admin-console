@@ -4,6 +4,8 @@ import type { AdminRow, TenantRow } from './modules/session/repo';
 declare module 'fastify' {
   interface FastifyInstance {
     db: DatabaseSync;
+    /** Path of `db`'s file, or ':memory:'. Used to open a dedicated read connection for exports. */
+    dbPath: string;
     now: () => Date;
     appEnv: string;
     /** Artificial per-item delay for bulk issue (ms); 0 in tests. */
