@@ -18,3 +18,4 @@ Open http://localhost:5173 and sign in as a demo admin.
 - [`docs/SPEC.md`](docs/SPEC.md) — product rules, architecture, API contract, test plan
 - [`PLAN.md`](PLAN.md) — build plan
 - [`AGENTS.md`](AGENTS.md) — instructions for AI coding agents
+- [`docs/REFLECTION.md`](docs/REFLECTION.md) — written reflection and design-question answers
