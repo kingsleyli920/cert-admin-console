@@ -12,6 +12,7 @@ import { AppLayout } from './components/AppLayout';
 import { NotFound } from './components/NotFound';
 import { BulkIssuePage } from './pages/BulkIssuePage';
 import { BulkIssueRunPage } from './pages/BulkIssueRunPage';
+import { CertificateDetailPage } from './pages/CertificateDetailPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { RootRedirect } from './pages/RootRedirect';
 import { SignInPage } from './pages/SignInPage';
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="certificates" replace /> },
       { path: 'certificates', element: <CertificatesPage /> },
+      { path: 'certificates/:id', element: <CertificateDetailPage /> },
       { path: 'bulk-issue', element: <BulkIssuePage /> },
       { path: 'bulk-issue/runs/:runId', element: <BulkIssueRunPage /> },
       { path: '*', element: <NotFound /> },

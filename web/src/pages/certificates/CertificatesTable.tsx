@@ -1,7 +1,7 @@
 import type { CertificateListItem, CertificateListQuery } from '@cac/shared';
 import { Table, type TableProps } from 'antd';
 import type { HTMLAttributes } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { StatusTag } from '../../components/StatusTag';
 import { TzDate } from '../../components/TzDate';
 
@@ -21,6 +21,7 @@ const SORT_KEYS: SortKey[] = ['issuedAt', 'learnerName', 'courseTitle', 'serial'
 
 /** Server-side paginated and sorted certificate table; all state comes from `filters`. */
 export function CertificatesTable({ tid, timeZone, items, total, filters, loading, onChange }: Props) {
+  const { search } = useLocation();
   const sortOrder = (key: SortKey) =>
     filters.sort === key ? (filters.order === 'asc' ? ('ascend' as const) : ('descend' as const)) : null;
 
@@ -31,7 +32,12 @@ export function CertificatesTable({ tid, timeZone, items, total, filters, loadin
       key: 'serial',
       sorter: true,
       sortOrder: sortOrder('serial'),
-      render: (serial: string, row) => <Link to={`/t/${tid}/certificates/${row.id}`}>{serial}</Link>,
+      render: (serial: string, row) => (
+        // `from` lets the detail page's back link restore this list's filters, sort and page.
+        <Link to={`/t/${tid}/certificates/${row.id}`} state={{ from: search }}>
+          {serial}
+        </Link>
+      ),
     },
     { title: 'Learner', dataIndex: 'learnerName', key: 'learnerName', sorter: true, sortOrder: sortOrder('learnerName') },
     { title: 'Course', dataIndex: 'courseTitle', key: 'courseTitle', sorter: true, sortOrder: sortOrder('courseTitle') },
