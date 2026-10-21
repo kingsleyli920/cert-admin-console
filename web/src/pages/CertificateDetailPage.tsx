@@ -10,6 +10,7 @@ import { StatusTag } from '../components/StatusTag';
 import { TzDate } from '../components/TzDate';
 import { useCurrentTenant } from '../components/useCurrentTenant';
 import { AuditTrail } from './certificate-detail/AuditTrail';
+import { RevokeAction } from './certificate-detail/RevokeAction';
 
 export function CertificateDetailPage() {
   const tenant = useCurrentTenant();
@@ -83,6 +84,8 @@ function DetailView({ cert, tid, timeZone }: { cert: CertificateDetail; tid: num
             {cert.serial}
           </Typography.Title>
           <StatusTag status={cert.status} />
+          <div style={{ flex: 1 }} />
+          <RevokeAction tid={tid} id={cert.id} serial={cert.serial} canRevoke={cert.status === 'valid'} />
         </div>
       </div>
 
