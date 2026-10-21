@@ -36,7 +36,7 @@
 
 **Flow**: select course → view learner distribution (eligible / already issued / not completed / inactive) → confirm dialog → progress bar → result page (three counts + detail table, filterable by outcome).
 
-**Run page** `/t/:tid/bulk-issue/runs/:runId`: refreshing or reopening the page lets the user continue viewing progress. While a run is running, the issue button stays disabled.
+**Run page** `/t/:tid/bulk-issue/runs/:runId`: refreshing or reopening the page lets the user continue viewing progress. Duplicate submission is prevented by: the confirm/issue buttons being disabled while the request is pending (a double click sends one POST), the same `Idempotency-Key` on automatic retries, and navigation to the run page on success. A second run on the same course (new intent, e.g. another admin) is allowed and safe: the unique constraint skips learners who already have a certificate (T3).
 
 **Idempotency**:
 - When the user clicks "confirm", generate an `Idempotency-Key`. Pass it as a parameter of the mutation. Only **network errors trigger automatic retry** (max 2 retries). Retries reuse the same key.
