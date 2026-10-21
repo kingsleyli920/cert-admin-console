@@ -171,6 +171,17 @@ PORT=3101 WEB_PORT=5273 DB_PATH=server/data/second.db npm run dev
 
 This project was built with AI coding agents under a human-owned plan. `PLAN.md` gives the build order and lists what the author kept for themselves: the spec, the data model, the key design decisions, reviewing every diff, and merging. `AGENTS.md` holds the rules for agents (invariants, commands, boundaries, and which skill to load), and `CLAUDE.md` imports it. Reviewed agent skills live in `.claude/skills/`, and `.claude/SKILLS_PROVENANCE.md` records where each one came from, what was changed, and the project overrides. `PLAN.md` says each milestone lands as one PR. Screenshots and GIFs from those PRs are in `docs/pr-assets/`.
 
+## Submission
+
+| Item | Where |
+|---|---|
+| Repository and commit history | This repository. Each milestone landed as one pull request (#1–#7) with its own commits. |
+| Screen recording | _Link to be added by the author._ |
+| Step 1 plan | [`PLAN.md`](PLAN.md) |
+| AI instruction files | [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), [`.claude/skills/`](.claude/skills/) with [`.claude/SKILLS_PROVENANCE.md`](.claude/SKILLS_PROVENANCE.md) |
+| Demo data | Seed script [`server/src/db/seed.ts`](server/src/db/seed.ts), applied automatically on first start; `npm run db:reset` restores it. |
+| Written reflection and design answers | [`docs/REFLECTION.md`](docs/REFLECTION.md) |
+
 ## Docs
 - [`docs/SPEC.md`](docs/SPEC.md) — product rules, architecture, API contract, test plan
 - [`PLAN.md`](PLAN.md) — build plan
