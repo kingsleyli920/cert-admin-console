@@ -544,6 +544,14 @@ function insertPlan(db: DatabaseSync, plan: Plan): void {
 }
 
 /**
+ * Inserts the full seed data set. The caller owns the transaction (see `resetDatabase`).
+ * Assumes schema.sql has been executed and the tables are empty.
+ */
+export function seedRows(db: DatabaseSync): void {
+  insertPlan(db, buildPlan());
+}
+
+/**
  * Inserts the full seed data set in one transaction.
  * Assumes schema.sql has been executed and the tables are empty.
  */
