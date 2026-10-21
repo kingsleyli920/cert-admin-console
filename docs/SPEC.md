@@ -32,6 +32,8 @@
 | Otherwise | issued | — |
 | Unexpected error thrown while issuing | failed | `internal_error` |
 
+**Run items**: an `issued` item references the new certificate; a `skipped` item with reason `already_issued` or `revoked` references the existing certificate (id + serial) so the result table can link to it; `not_completed` and `failed` items have `certificateId` and `serial` null.
+
 **Flow**: select course → view learner distribution (eligible / already issued / not completed / inactive) → confirm dialog → progress bar → result page (three counts + detail table, filterable by outcome).
 
 **Run page** `/t/:tid/bulk-issue/runs/:runId`: refreshing or reopening the page lets the user continue viewing progress. While a run is running, the issue button stays disabled.
@@ -158,6 +160,8 @@ Rules:
 - Tenant not owned by the current admin, or resource not in that tenant → 404.
 - Error body is always `{ error: { code, message } }`.
 - Validation failure → 400.
+- The exact request/response shapes are the zod schemas in `shared/src/schemas.ts`; this table is a summary.
+- Error codes (`errorCodeSchema`): `VALIDATION_ERROR` 400, `BAD_REQUEST` 400 (malformed body), `UNAUTHORIZED` 401, `NOT_FOUND` 404, `ALREADY_REVOKED` 409, `IDEMPOTENCY_KEY_REUSED` 422, `INTERNAL_ERROR` 500.
 
 | Method | Path | Description |
 |---|---|---|
@@ -168,9 +172,9 @@ Rules:
 | GET | `/tenants/:tid/certificates/export.csv` | Same parameters as above. Not paginated. |
 | GET | `/tenants/:tid/certificates/:id` | Detail + audit timeline |
 | POST | `/tenants/:tid/certificates/:id/revoke` | Body `{reason}` → 200 / 409 |
-| GET | `/tenants/:tid/courses` | Includes `eligible / alreadyIssued / notCompleted / inactive` counts |
+| GET | `/tenants/:tid/courses` | `{items:[{id,title,enrolled,counts:{eligible,alreadyIssued,notCompleted,inactive}}]}` — counts follow §1.3 order (`alreadyIssued` = valid or revoked certificate exists; `inactive` = completed, no certificate, learner inactive) |
 | POST | `/tenants/:tid/courses/:cid/bulk-issue` | Request header `Idempotency-Key` (required, UUID) → 202 `{run}`. Same key with a different course → 422. |
-| GET | `/tenants/:tid/bulk-issue-runs/:runId` | `{status,total,processed,counts,items[]}` |
+| GET | `/tenants/:tid/bulk-issue-runs/:runId` | `{run}` — same shape as the POST response: `{id,courseId,courseTitle,status,createdAt,createdBy,total,processed,counts:{issued,skipped,failed,pending},items[]}` |
 | GET | `/tenants/:tid/audit-logs` | Paginated (P2) |
 | POST | `/__test__/reset` | Registered only when `APP_ENV=test`. Resets the DB to seed state. |
 
@@ -244,6 +248,26 @@ Every case listed must have a matching test.
 | Detail / revoke | All fields complete. Empty reason → 400. Repeated revoke → 409 **(T7)**. Revoke writes an audit entry. The same UTC instant shows different dates in Sydney and Perth. Sydney abbreviations are correct under both DST and non-DST **(T5)**. |
 | Export | Row count equals list total (with filters) **(T6)**. Dates use the tenant timezone. Escaping and formula-injection protection. Full LCL export is streamed (chunked) and completes in under 3 seconds. Download the file on the page and verify the row count. |
 
+### 3.4 Tenant × admin × timezone matrix
+
+Tests must cover every combination below, not a single tenant or admin. Server tests use one shared table-driven helper, `ACCESS_MATRIX` (in `server/test/helpers/`), and every new tenant-scoped route is added to it.
+
+| Admin | Manages | Expected for every tenant-scoped route |
+|---|---|---|
+| `alice` (multi-tenant) | HHT (Sydney, DST), SRA (Perth), NHI (Brisbane) | HHT/SRA/NHI → allowed; LCL → 404 |
+| `carol` (second admin of HHT) | HHT only | HHT → allowed; SRA/LCL/NHI → 404 |
+| `bob` (single-tenant) | LCL (Sydney) | LCL → allowed; HHT/SRA/NHI → 404 |
+| no session | — | 401 |
+
+| Concern | Cases (milestone where the route lands) |
+|---|---|
+| Isolation | Every tenant-scoped route × every row of the admin table above, including non-existent and malformed tenant ids (404) and resources of another tenant addressed through an allowed tenant id (404). |
+| Same tenant, several admins | alice and carol see identical HHT data; audit records the acting admin (who issued / who revoked) (M4, M5); alice and carol bulk-issuing the same course concurrently → at most one certificate per learner (M4); carol revokes a certificate alice issued → detail shows both actors (M5). |
+| Multi-tenant admin | alice's tenant switcher lists exactly HHT/SRA/NHI; switching shows that tenant's timezone label and data with no stale rows from the previous tenant. |
+| Single-tenant admin | bob's switcher lists only LCL; opening any other tenant URL shows the 404 page. |
+| Timezones | The same UTC instant renders on different local dates in Sydney vs Perth; Sydney before/after the DST change shows AEDT/AEST; Brisbane always AEST; CSV `Issue Date` and its header use each tenant's own timezone (M6); serial `YYYY` uses the tenant-local year at the New Year boundary (M4). |
+| Learners | Same-name learners in different tenants never cross (Emma Wilson in HHT vs SRA); every learner state (completed / enrolled / inactive / valid cert / revoked cert) maps to its §1.3 outcome (M3 counts, M4 runs); a tenant with learners but zero certificates (NHI) shows the "no certificates yet" empty state (M3). |
+
 ---
 
 ## 4. Seed data
@@ -254,9 +278,10 @@ Deterministic seed. All ids and timestamps are fixed.
 |---|---|---|---|
 | Harbour Health Training | HHT | Australia/Sydney | Primary demo tenant (has DST) |
 | Swan River Academy | SRA | Australia/Perth | Timezone comparison (no DST) |
-| Large Corp Learning | LCL | Australia/Sydney | About 8,000 certificates. Demonstrates pagination and export at scale. |
+| Large Corp Learning | LCL | Australia/Sydney | Exactly 8,000 certificates. Demonstrates pagination and export at scale. |
+| New Horizons Institute | NHI | Australia/Brisbane | Courses and enrollments but zero certificates. Demonstrates the "no certificates yet" empty state. |
 
-- Admins: `alice` (HHT + SRA), `bob` (LCL).
+- Admins: `alice` "Alice Nguyen" (HHT + SRA + NHI), `bob` "Bob Fraser" (LCL), `carol` "Carol Smith" (HHT only — a second admin of the same tenant). Tenant ids: HHT 1, SRA 2, LCL 3, NHI 4.
 - HHT and SRA each have an "Emma Wilson". These are two different learner records.
 - HHT has one certificate issued at `2026-04-04T14:30:00Z` (Sydney 2026-04-05 01:30 AEDT). SRA has one certificate at the same instant (Perth 2026-04-04 22:30 AWST).
 - HHT's "Fire Safety 2026" course has 16 learners:

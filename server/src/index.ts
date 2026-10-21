@@ -1,8 +1,16 @@
 import { buildApp } from './app';
 import { loadConfig } from './config';
+import { initDatabase } from './db/open';
 
 const config = loadConfig();
-const app = await buildApp({ logger: config.appEnv !== 'test' });
+const db = initDatabase(config.dbPath, { seed: true });
+const app = await buildApp({
+  db,
+  appEnv: config.appEnv,
+  delayMs: config.bulkIssueDelayMs,
+  logger: config.appEnv !== 'test',
+});
+app.addHook('onClose', async () => db.close());
 
 let closing = false;
 async function shutdown(signal: string) {

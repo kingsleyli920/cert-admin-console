@@ -2,13 +2,18 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { errorResponseSchema, healthResponseSchema } from '@cac/shared';
-import { buildApp } from '../../src/app';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../../src/plugins/errors';
+import { buildTestApp } from '../helpers/app';
+import {
+  ConflictError,
+  IdempotencyKeyReusedError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../../src/plugins/errors';
 
 describe('GET /api/health', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildTestApp();
   });
   afterEach(() => app.close());
 
@@ -30,12 +35,15 @@ describe('GET /api/health', () => {
 describe('error handler', () => {
   let app: FastifyInstance;
   beforeEach(async () => {
-    app = await buildApp();
+    app = await buildTestApp();
     app.get('/t/not-found', async () => {
       throw new NotFoundError('Certificate not found');
     });
     app.get('/t/conflict', async () => {
       throw new ConflictError('Already revoked');
+    });
+    app.get('/t/key-reused', async () => {
+      throw new IdempotencyKeyReusedError();
     });
     app.get('/t/unauthorized', async () => {
       throw new UnauthorizedError();
@@ -52,7 +60,8 @@ describe('error handler', () => {
 
   it.each([
     ['/t/not-found', 404, 'NOT_FOUND', 'Certificate not found'],
-    ['/t/conflict', 409, 'CONFLICT', 'Already revoked'],
+    ['/t/conflict', 409, 'ALREADY_REVOKED', 'Already revoked'],
+    ['/t/key-reused', 422, 'IDEMPOTENCY_KEY_REUSED', undefined],
     ['/t/unauthorized', 401, 'UNAUTHORIZED', undefined],
     ['/t/zod', 400, 'VALIDATION_ERROR', undefined],
   ])('maps %s to %i %s', async (url, status, code, message) => {

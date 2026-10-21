@@ -71,4 +71,80 @@ describe('createApiClient', () => {
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ status: 0, code: 'NETWORK_ERROR' });
   });
+
+  it('merges default accept, client headers and per-request headers on a POST', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 204 }));
+    const api = createApiClient({ fetch, headers: { 'x-tenant': 'acme' } });
+
+    await api.signIn('alice');
+
+    const [, init] = fetch.mock.calls[0]!;
+    const headers = new Headers(init?.headers);
+    expect(headers.get('content-type')).toBe('application/json');
+    expect(headers.get('accept')).toBe('application/json');
+    expect(headers.get('x-tenant')).toBe('acme');
+  });
+
+  it('signIn posts the admin id as a JSON body to /api/session', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 204 }));
+
+    await createApiClient({ fetch }).signIn('alice');
+
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe('/api/session');
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({ adminId: 'alice' });
+  });
+
+  it('signIn accepts a 200 with an empty body', async () => {
+    const fetch = async () => new Response('', { status: 200 });
+    await expect(createApiClient({ fetch }).signIn('alice')).resolves.toBeUndefined();
+  });
+
+  it('signOut sends DELETE /api/session and accepts 204', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 204 }));
+
+    await expect(createApiClient({ fetch }).signOut()).resolves.toBeUndefined();
+
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe('/api/session');
+    expect(init?.method).toBe('DELETE');
+  });
+
+  it('getAdmins and getMe parse their responses with the shared schemas', async () => {
+    const admins = { items: [{ id: 'alice', name: 'Alice Nguyen' }] };
+    const me = {
+      admin: admins.items[0],
+      tenants: [{ id: 1, code: 'HHT', name: 'Hunter Health Training', timezone: 'Australia/Sydney' }],
+    };
+    const fetch = async (input: RequestInfo | URL) =>
+      json(String(input).endsWith('/api/admins') ? admins : me);
+    const api = createApiClient({ fetch });
+
+    await expect(api.getAdmins()).resolves.toEqual(admins);
+    await expect(api.getMe()).resolves.toEqual(me);
+  });
+
+  it('getMe maps a 401 to ApiError with status 401', async () => {
+    const fetch = async () =>
+      json({ error: { code: 'UNAUTHORIZED', message: 'Sign in required' } }, 401);
+
+    const err = await createApiClient({ fetch })
+      .getMe()
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 401, code: 'UNAUTHORIZED' });
+  });
+
+  it('signIn surfaces a non-2xx error envelope as ApiError', async () => {
+    const fetch = async () =>
+      json({ error: { code: 'VALIDATION_ERROR', message: 'Unknown admin' } }, 400);
+
+    const err = await createApiClient({ fetch })
+      .signIn('nobody')
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+  });
 });
