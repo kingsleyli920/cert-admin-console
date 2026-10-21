@@ -1,8 +1,12 @@
 import {
   adminsResponseSchema,
+  certificateListResponseSchema,
+  coursesResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
   meResponseSchema,
+  type CertificateListQuery,
+  type CertificateListResponse,
   type HealthResponse,
   type MeResponse,
   signInRequestSchema,
@@ -10,6 +14,7 @@ import {
 import type { z, ZodType } from 'zod';
 
 type AdminsResponse = z.infer<typeof adminsResponseSchema>;
+export type CoursesResponse = z.infer<typeof coursesResponseSchema>;
 
 export class ApiError extends Error {
   constructor(
@@ -35,6 +40,16 @@ function mergeHeaders(...sources: Array<RequestInit['headers']>): Headers {
     new Headers(source).forEach((value, name) => merged.set(name, value));
   }
   return merged;
+}
+
+/** `?a=1&b=2` from the params that are set (undefined and empty strings are dropped); '' if none. */
+function toQueryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : '';
 }
 
 export function createApiClient(opts: ApiClientOptions = {}) {
@@ -80,6 +95,16 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     getHealth: (): Promise<HealthResponse> => request('/api/health', healthResponseSchema),
     getAdmins: (): Promise<AdminsResponse> => request('/api/admins', adminsResponseSchema),
     getMe: (): Promise<MeResponse> => request('/api/me', meResponseSchema),
+    listCertificates: (
+      tid: number,
+      query: Partial<CertificateListQuery>,
+    ): Promise<CertificateListResponse> =>
+      request(
+        `/api/tenants/${tid}/certificates${toQueryString(query)}`,
+        certificateListResponseSchema,
+      ),
+    listCourses: (tid: number): Promise<CoursesResponse> =>
+      request(`/api/tenants/${tid}/courses`, coursesResponseSchema),
     /** 204 or 200 with an empty body; the session cookie is set by the server. */
     signIn: async (adminId: string): Promise<void> => {
       const body = signInRequestSchema.parse({ adminId });

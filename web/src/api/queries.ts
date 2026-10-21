@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
+import type { CertificateListQuery } from '@cac/shared';
 import { api } from '.';
 
 /**
@@ -15,3 +16,15 @@ export const meQuery = queryOptions({
   queryFn: () => api.getMe(),
   staleTime: 5 * 60_000,
 });
+
+export const certificatesQuery = (tid: number, query: CertificateListQuery) =>
+  queryOptions({
+    queryKey: tenantKey(tid, 'certificates', query),
+    queryFn: () => api.listCertificates(tid, query),
+  });
+
+export const coursesQuery = (tid: number) =>
+  queryOptions({
+    queryKey: tenantKey(tid, 'courses'),
+    queryFn: () => api.listCourses(tid),
+  });
