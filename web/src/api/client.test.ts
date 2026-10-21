@@ -147,4 +147,88 @@ describe('createApiClient', () => {
 
     expect(err).toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
   });
+
+  describe('listCertificates', () => {
+    const page = {
+      items: [
+        {
+          id: 1,
+          serial: 'HHT-2026-000001',
+          learnerId: 7,
+          learnerName: 'Emma Wilson',
+          courseId: 2,
+          courseTitle: 'Fire Safety 2026',
+          issuedAt: '2026-04-04T14:30:00.000Z',
+          status: 'valid',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    };
+
+    it('GETs the tenant route with only the params that are set', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json(page));
+
+      await expect(
+        createApiClient({ fetch }).listCertificates(1, {
+          q: 'emma',
+          courseId: 2,
+          status: 'revoked',
+          sort: 'learnerName',
+          order: 'asc',
+          page: 3,
+          pageSize: 50,
+        }),
+      ).resolves.toEqual(page);
+
+      const url = new URL(String(fetch.mock.calls[0]![0]), 'http://x');
+      expect(url.pathname).toBe('/api/tenants/1/certificates');
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        q: 'emma',
+        courseId: '2',
+        status: 'revoked',
+        sort: 'learnerName',
+        order: 'asc',
+        page: '3',
+        pageSize: '50',
+      });
+    });
+
+    it('omits undefined and empty params and sends no "?" for an empty query', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json(page));
+      const api = createApiClient({ fetch });
+
+      await api.listCertificates(4, { q: '', courseId: undefined, page: 2 });
+      await api.listCertificates(4, {});
+
+      expect(fetch.mock.calls[0]![0]).toBe('/api/tenants/4/certificates?page=2');
+      expect(fetch.mock.calls[1]![0]).toBe('/api/tenants/4/certificates');
+    });
+
+    it('rejects a body that does not match the shared list schema', async () => {
+      const fetch = async () => json({ ...page, items: [{ id: 1 }] });
+      const err = await createApiClient({ fetch })
+        .listCertificates(1, {})
+        .catch((e: unknown) => e);
+      expect(err).toMatchObject({ code: 'INVALID_RESPONSE' });
+    });
+  });
+
+  it('listCourses GETs /api/tenants/:tid/courses and parses the response', async () => {
+    const courses = {
+      items: [
+        {
+          id: 2,
+          title: 'Fire Safety 2026',
+          enrolled: 16,
+          counts: { eligible: 8, alreadyIssued: 3, notCompleted: 4, inactive: 1 },
+        },
+      ],
+    };
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => json(courses));
+
+    await expect(createApiClient({ fetch }).listCourses(1)).resolves.toEqual(courses);
+    expect(fetch.mock.calls[0]![0]).toBe('/api/tenants/1/courses');
+  });
 });

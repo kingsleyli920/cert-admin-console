@@ -40,6 +40,11 @@ async function mockSession(page: Page, initial: AdminId | null = null) {
           json: { error: { code: 'UNAUTHORIZED', message: 'Sign in required' } },
         }),
   );
+  // The landing page (certificate list) loads these; the specs here do not look at them.
+  await page.route(/\/api\/tenants\/\d+\/courses$/, (route) => route.fulfill({ json: { items: [] } }));
+  await page.route(/\/api\/tenants\/\d+\/certificates(\?.*)?$/, (route) =>
+    route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } }),
+  );
   return session;
 }
 
