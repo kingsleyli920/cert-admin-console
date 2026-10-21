@@ -300,7 +300,7 @@ Shared by the self-check and the L5 user journey.
 
 1. `npm run dev` → sign in as alice → HHT certificate list: search, sort, pagination, both empty states.
 2. Bulk issue → Fire Safety 2026 → confirm → progress bar → expect 8 issued / 7 skipped / 1 failed.
-3. Issue again with a new key → all skipped. Refresh the run page: progress and results are still shown.
+3. Issue again with a new key → 15 skipped (the 8 new certificates are now `already_issued`) and 1 failed (the inactive learner fails again). Refresh the run page: progress and results are still shown.
 4. Open a certificate detail → timezone abbreviation → revoke → the audit timeline shows the new entry.
 5. Switch to SRA → the same-name learner is a different record. The same UTC instant shows a different date.
 6. Sign in as bob. Open alice's tenant URL → 404 page.
