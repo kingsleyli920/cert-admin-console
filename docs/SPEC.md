@@ -256,9 +256,10 @@ Deterministic seed. All ids and timestamps are fixed.
 |---|---|---|---|
 | Harbour Health Training | HHT | Australia/Sydney | Primary demo tenant (has DST) |
 | Swan River Academy | SRA | Australia/Perth | Timezone comparison (no DST) |
-| Large Corp Learning | LCL | Australia/Sydney | About 8,000 certificates. Demonstrates pagination and export at scale. |
+| Large Corp Learning | LCL | Australia/Sydney | Exactly 8,000 certificates. Demonstrates pagination and export at scale. |
+| New Horizons Institute | NHI | Australia/Brisbane | Courses and enrollments but zero certificates. Demonstrates the "no certificates yet" empty state. |
 
-- Admins: `alice` (HHT + SRA), `bob` (LCL).
+- Admins: `alice` "Alice Nguyen" (HHT + SRA + NHI), `bob` "Bob Fraser" (LCL). Tenant ids: HHT 1, SRA 2, LCL 3, NHI 4.
 - HHT and SRA each have an "Emma Wilson". These are two different learner records.
 - HHT has one certificate issued at `2026-04-04T14:30:00Z` (Sydney 2026-04-05 01:30 AEDT). SRA has one certificate at the same instant (Perth 2026-04-04 22:30 AWST).
 - HHT's "Fire Safety 2026" course has 16 learners:
