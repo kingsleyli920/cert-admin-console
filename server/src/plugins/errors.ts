@@ -1,11 +1,11 @@
 import type { FastifyError, FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
-import type { ErrorResponse } from '@cac/shared';
+import type { ErrorCode, ErrorResponse } from '@cac/shared';
 
 export class AppError extends Error {
   constructor(
     readonly statusCode: number,
-    readonly code: string,
+    readonly code: ErrorCode,
     message: string,
   ) {
     super(message);
@@ -20,8 +20,14 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message = 'Conflict') {
-    super(409, 'CONFLICT', message);
+  constructor(message = 'Certificate is already revoked') {
+    super(409, 'ALREADY_REVOKED', message);
+  }
+}
+
+export class IdempotencyKeyReusedError extends AppError {
+  constructor(message = 'Idempotency-Key was already used for a different course') {
+    super(422, 'IDEMPOTENCY_KEY_REUSED', message);
   }
 }
 
@@ -31,7 +37,7 @@ export class UnauthorizedError extends AppError {
   }
 }
 
-function body(code: string, message: string): ErrorResponse {
+function body(code: ErrorCode, message: string): ErrorResponse {
   return { error: { code, message } };
 }
 
