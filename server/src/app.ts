@@ -14,6 +14,8 @@ import { zodSerializerCompiler, zodValidatorCompiler } from './plugins/zod';
 
 export interface BuildAppOptions {
   db: DatabaseSync;
+  /** File path `db` was opened from; exports open their own read connection on it. Absent = in-memory. */
+  dbPath?: string;
   now?: () => Date;
   appEnv?: string;
   delayMs?: number;
@@ -28,6 +30,7 @@ export async function buildApp(opts: BuildAppOptions) {
   const app = Fastify({ logger: opts.logger ?? false });
 
   app.decorate('db', opts.db);
+  app.decorate('dbPath', opts.dbPath ?? ':memory:');
   app.decorate('now', opts.now ?? (() => new Date()));
   app.decorate('appEnv', opts.appEnv ?? 'development');
   app.decorate('delayMs', opts.delayMs ?? 0);
