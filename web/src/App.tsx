@@ -11,6 +11,7 @@ import { ApiError } from './api/client';
 import { AppLayout } from './components/AppLayout';
 import { NotFound } from './components/NotFound';
 import { BulkIssuePage } from './pages/BulkIssuePage';
+import { BulkIssueRunPage } from './pages/BulkIssueRunPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { RootRedirect } from './pages/RootRedirect';
 import { SignInPage } from './pages/SignInPage';
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="certificates" replace /> },
       { path: 'certificates', element: <CertificatesPage /> },
       { path: 'bulk-issue', element: <BulkIssuePage /> },
+      { path: 'bulk-issue/runs/:runId', element: <BulkIssueRunPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

@@ -1,10 +1,13 @@
 import {
   adminsResponseSchema,
+  bulkIssueRunResponseSchema,
   certificateListResponseSchema,
   coursesResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
+  idempotencyKeySchema,
   meResponseSchema,
+  type BulkIssueRun,
   type CertificateListQuery,
   type CertificateListResponse,
   type HealthResponse,
@@ -105,6 +108,23 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       ),
     listCourses: (tid: number): Promise<CoursesResponse> =>
       request(`/api/tenants/${tid}/courses`, coursesResponseSchema),
+    /** Starts a run (202). The same key replays the same run, so network retries are safe. */
+    bulkIssue: async (tid: number, courseId: number, idempotencyKey: string): Promise<BulkIssueRun> => {
+      const key = idempotencyKeySchema.parse(idempotencyKey);
+      const { run } = await request(
+        `/api/tenants/${tid}/courses/${courseId}/bulk-issue`,
+        bulkIssueRunResponseSchema,
+        { method: 'POST', headers: { 'idempotency-key': key } },
+      );
+      return run;
+    },
+    getRun: async (tid: number, runId: number): Promise<BulkIssueRun> => {
+      const { run } = await request(
+        `/api/tenants/${tid}/bulk-issue-runs/${runId}`,
+        bulkIssueRunResponseSchema,
+      );
+      return run;
+    },
     /** 204 or 200 with an empty body; the session cookie is set by the server. */
     signIn: async (adminId: string): Promise<void> => {
       const body = signInRequestSchema.parse({ adminId });

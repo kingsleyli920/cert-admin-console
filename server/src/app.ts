@@ -2,6 +2,8 @@ import type { DatabaseSync } from 'node:sqlite';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
+import { bulkIssueRoutes } from './modules/bulk-issue/routes';
+import { BulkIssueRunner, type RunnerFaults } from './modules/bulk-issue/runner';
 import { certificateRoutes } from './modules/certificates/routes';
 import { courseRoutes } from './modules/courses/routes';
 import { sessionRoutes } from './modules/session/routes';
@@ -16,6 +18,8 @@ export interface BuildAppOptions {
   appEnv?: string;
   delayMs?: number;
   logger?: boolean;
+  /** Test-only fault injection into the bulk-issue runner. */
+  faults?: RunnerFaults;
 }
 
 export async function buildApp(opts: BuildAppOptions) {
@@ -40,7 +44,12 @@ export async function buildApp(opts: BuildAppOptions) {
   await app.register(sessionRoutes);
   await app.register(certificateRoutes);
   await app.register(courseRoutes);
-  if (app.appEnv === 'test') await app.register(testResetRoute);
+  const runner = new BulkIssueRunner(app, opts.faults);
+  // preClose (not onClose): the runner must stop before any onClose hook closes the database.
+  app.addHook('preClose', async () => runner.stop());
+  app.addHook('onReady', async () => runner.resumeAll());
+  await app.register(bulkIssueRoutes, { runner });
+  if (app.appEnv === 'test') await app.register(testResetRoute, { runner });
 
   return app;
 }
