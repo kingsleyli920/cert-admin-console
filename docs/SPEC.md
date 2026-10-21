@@ -158,6 +158,8 @@ Rules:
 - Tenant not owned by the current admin, or resource not in that tenant → 404.
 - Error body is always `{ error: { code, message } }`.
 - Validation failure → 400.
+- The exact request/response shapes are the zod schemas in `shared/src/schemas.ts`; this table is a summary.
+- Error codes (`errorCodeSchema`): `VALIDATION_ERROR` 400, `BAD_REQUEST` 400 (malformed body), `UNAUTHORIZED` 401, `NOT_FOUND` 404, `ALREADY_REVOKED` 409, `IDEMPOTENCY_KEY_REUSED` 422, `INTERNAL_ERROR` 500.
 
 | Method | Path | Description |
 |---|---|---|
@@ -168,9 +170,9 @@ Rules:
 | GET | `/tenants/:tid/certificates/export.csv` | Same parameters as above. Not paginated. |
 | GET | `/tenants/:tid/certificates/:id` | Detail + audit timeline |
 | POST | `/tenants/:tid/certificates/:id/revoke` | Body `{reason}` → 200 / 409 |
-| GET | `/tenants/:tid/courses` | Includes `eligible / alreadyIssued / notCompleted / inactive` counts |
+| GET | `/tenants/:tid/courses` | `{items:[{id,title,enrolled,counts:{eligible,alreadyIssued,notCompleted,inactive}}]}` — counts follow §1.3 order (`alreadyIssued` = valid or revoked certificate exists; `inactive` = completed, no certificate, learner inactive) |
 | POST | `/tenants/:tid/courses/:cid/bulk-issue` | Request header `Idempotency-Key` (required, UUID) → 202 `{run}`. Same key with a different course → 422. |
-| GET | `/tenants/:tid/bulk-issue-runs/:runId` | `{status,total,processed,counts,items[]}` |
+| GET | `/tenants/:tid/bulk-issue-runs/:runId` | `{run}` — same shape as the POST response: `{id,courseId,courseTitle,status,createdAt,createdBy,total,processed,counts:{issued,skipped,failed,pending},items[]}` |
 | GET | `/tenants/:tid/audit-logs` | Paginated (P2) |
 | POST | `/__test__/reset` | Registered only when `APP_ENV=test`. Resets the DB to seed state. |
 
