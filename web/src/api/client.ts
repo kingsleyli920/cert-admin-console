@@ -18,6 +18,15 @@ export interface ApiClientOptions {
   headers?: Record<string, string>;
 }
 
+/** Later sources win per header name; nothing is dropped. */
+function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
+  const merged = new Headers();
+  for (const source of sources) {
+    new Headers(source).forEach((value, name) => merged.set(name, value));
+  }
+  return merged;
+}
+
 export function createApiClient(opts: ApiClientOptions = {}) {
   const baseUrl = opts.baseUrl ?? '';
   // Resolve lazily so a fetch replaced after construction (tests) is honoured.
@@ -29,7 +38,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       res = await doFetch(`${baseUrl}${path}`, {
         ...init,
         credentials: 'include',
-        headers: { accept: 'application/json', ...opts.headers },
+        headers: mergeHeaders({ accept: 'application/json' }, opts.headers, init.headers),
       });
     } catch (err) {
       throw new ApiError(0, 'NETWORK_ERROR', err instanceof Error ? err.message : 'Network error');
