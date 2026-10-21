@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { errorResponseSchema, meResponseSchema } from '@cac/shared';
+import { errorResponseSchema } from '@cac/shared';
 import { requireTenant } from '../../src/plugins/session';
 import { describeAccessMatrix } from '../helpers/access-matrix';
 import { buildTestApp, signIn } from '../helpers/app';
@@ -37,29 +37,6 @@ describe('GET /api/me', () => {
   it('ignores identity passed in a header', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/me', headers: { 'x-admin-id': 'alice' } });
     expect(res.statusCode).toBe(401);
-  });
-
-  it('returns alice with HHT, SRA and NHI (with timezones) and not LCL', async () => {
-    const cookie = await signIn(app, 'alice');
-    const res = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
-    expect(res.statusCode).toBe(200);
-    expect(meResponseSchema.parse(res.json())).toEqual({
-      admin: { id: 'alice', name: 'Alice Nguyen' },
-      tenants: [
-        { id: 1, code: 'HHT', name: 'Harbour Health Training', timezone: 'Australia/Sydney' },
-        { id: 2, code: 'SRA', name: 'Swan River Academy', timezone: 'Australia/Perth' },
-        { id: 4, code: 'NHI', name: 'New Horizons Institute', timezone: 'Australia/Brisbane' },
-      ],
-    });
-  });
-
-  it('returns bob with only LCL', async () => {
-    const cookie = await signIn(app, 'bob');
-    const res = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
-    expect(meResponseSchema.parse(res.json())).toEqual({
-      admin: { id: 'bob', name: 'Bob Fraser' },
-      tenants: [{ id: 3, code: 'LCL', name: 'Large Corp Learning', timezone: 'Australia/Sydney' }],
-    });
   });
 
   it('stops working after sign-out clears the cookie', async () => {

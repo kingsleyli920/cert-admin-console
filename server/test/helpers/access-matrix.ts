@@ -45,6 +45,8 @@ export const MALFORMED_TENANT_IDS: readonly string[] = ['0', '999', 'abc', '01',
 
 export interface AccessRow {
   admin: AdminId;
+  /** Display name, as `/api/me` and `/api/admins` report it. */
+  name: string;
   /** Tenant ids the admin manages, ascending (what `/api/me` returns). */
   allowed: readonly number[];
   /** Every other seeded tenant id: must answer 404. */
@@ -52,16 +54,17 @@ export interface AccessRow {
 }
 
 const ALL_IDS = TENANTS.map((t) => t.id);
-const row = (admin: AdminId, allowed: number[]): AccessRow => ({
+const row = (admin: AdminId, name: string, allowed: number[]): AccessRow => ({
   admin,
+  name,
   allowed,
   denied: ALL_IDS.filter((id) => !allowed.includes(id)),
 });
 
 export const ACCESS_MATRIX: readonly AccessRow[] = [
-  row('alice', [1, 2, 4]), // HHT, SRA, NHI; LCL -> 404
-  row('carol', [1]), // HHT only; SRA/LCL/NHI -> 404
-  row('bob', [3]), // LCL only; HHT/SRA/NHI -> 404
+  row('alice', 'Alice Nguyen', [1, 2, 4]), // HHT, SRA, NHI; LCL -> 404
+  row('carol', 'Carol Smith', [1]), // HHT only; SRA/LCL/NHI -> 404
+  row('bob', 'Bob Fraser', [3]), // LCL only; HHT/SRA/NHI -> 404
 ];
 
 export interface AllowedContext {
