@@ -1,6 +1,6 @@
 import type { MeResponse } from '@cac/shared';
 import { http, HttpResponse } from 'msw';
-import { alice, aliceMe, bob, bobMe } from './fixtures';
+import { alice, aliceMe, bob, bobMe, carol, carolMe } from './fixtures';
 import { server } from './msw';
 
 const unauthorized = () =>
@@ -10,14 +10,16 @@ const unauthorized = () =>
   );
 
 /** In-memory stand-in for the session endpoints; `signedInAs` mimics the session cookie. */
-export function mockSessionBackend(initial: 'alice' | 'bob' | null = null) {
+export type AdminId = 'alice' | 'bob' | 'carol';
+
+export function mockSessionBackend(initial: AdminId | null = null) {
   const state = { signedInAs: initial };
-  const meFor: Record<string, MeResponse> = { alice: aliceMe, bob: bobMe };
+  const meFor: Record<string, MeResponse> = { alice: aliceMe, bob: bobMe, carol: carolMe };
 
   server.use(
-    http.get('/api/admins', () => HttpResponse.json({ items: [alice, bob] })),
+    http.get('/api/admins', () => HttpResponse.json({ items: [alice, bob, carol] })),
     http.post('/api/session', async ({ request }) => {
-      const { adminId } = (await request.json()) as { adminId: 'alice' | 'bob' };
+      const { adminId } = (await request.json()) as { adminId: AdminId };
       state.signedInAs = adminId;
       return new HttpResponse(null, { status: 204 });
     }),
