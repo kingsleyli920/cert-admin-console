@@ -7,7 +7,7 @@ and your task prompt disagree, stop and report — do not guess.
 ## Environment (every shell command)
 ```sh
 source ~/.nvm/nvm.sh && nvm use 24 >/dev/null   # system default Node is v26; this project uses 24
-export PLAYWRIGHT_BROWSERS_PATH="/Users/kingsley/projects/favorites/ocean interview/.cache/ms-playwright"
+# optional: export PLAYWRIGHT_BROWSERS_PATH=<dir> to keep Playwright browsers in a project-local cache
 ```
 - Never install anything globally, never change nvm aliases, shell profiles or brew.
 - Never add a dependency that is not in `docs/SPEC.md` §2 without asking. Versions are pinned exactly.

@@ -225,7 +225,7 @@ Rules:
 
 - Aggregate scripts: `test:be` = L1a + L1b + L3 + L4. `test:fe` = L1c + L1d + L2. `test:all` = all layers. Plus `typecheck`.
 - Visual regression determinism: fixed seed. `page.clock` fixes the current time. Animations are disabled. Viewport 1280×800. Content generated at runtime (new certificate time, runId) is covered with masks. Baselines are generated on macOS (file names carry a platform suffix). The README must say so. **Baselines may only be updated by the main agent after review.**
-- Parallel isolation: each worktree sets its own `PORT / WEB_PORT / DB_PATH`. Playwright browsers are installed in `ocean interview/.cache/ms-playwright`. Export `PLAYWRIGHT_BROWSERS_PATH` before each run.
+- Parallel isolation: each worktree sets its own `PORT / WEB_PORT / DB_PATH`. Playwright browsers can be kept in a project-local cache via `PLAYWRIGHT_BROWSERS_PATH`.
 
 ### 3.2 Gates (must pass before commit)
 

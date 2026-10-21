@@ -47,7 +47,7 @@ On the `/sign-in` page, pick an admin. There is no password.
 
 1. Run `npm run dev` and sign in as `alice`. Open HHT's certificate list. Try search, sorting, pagination and both empty states.
 2. Open bulk issue, choose **Fire Safety 2026** and confirm. Expect **8 issued, 7 skipped, 1 failed**. The failed learner is inactive.
-3. Run bulk issue again with a new key. The 8 new certificates now show as skipped (`already_issued`), so the run ends with 15 skipped and 1 failed. Refresh the run page. Progress and results are still shown.
+3. Refresh the run page: progress and results are still shown. Back on the bulk-issue page, Fire Safety 2026 now shows 0 eligible and the issue button is disabled. A retried request with the same `Idempotency-Key` returns the same run, and a new run on the course skips everyone already issued (15 skipped, 1 failed); both are covered by the server acceptance tests.
 4. Open a certificate's detail. Check the timezone abbreviation and hover over the time to see UTC. Revoke it with a reason, then check that the audit timeline shows the new REVOKE entry.
 5. Switch the tenant to SRA. The learner with the same name is a different record. The certificates issued at `2026-04-04T14:30:00Z` show as 5 Apr 2026 in Sydney and 4 Apr 2026 in Perth.
 6. Sign out, then sign in as `bob`. Open an HHT URL, such as `/t/1/certificates`. The result is the 404 page.
