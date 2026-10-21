@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { buildRun, RUN_ID } from '../test/bulkIssue';
 import { ApiError, createApiClient } from './client';
 
 const json = (body: unknown, status = 200) =>
@@ -230,5 +231,59 @@ describe('createApiClient', () => {
 
     await expect(createApiClient({ fetch }).listCourses(1)).resolves.toEqual(courses);
     expect(fetch.mock.calls[0]![0]).toBe('/api/tenants/1/courses');
+  });
+  describe('bulk issue', () => {
+    const KEY = '3f2b8c1e-7a4d-4e6b-9c0a-1d2e3f4a5b6c';
+
+    it('bulkIssue POSTs to the course route with the Idempotency-Key header and returns the run', async () => {
+      const run = buildRun(0);
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json({ run }, 202));
+
+      await expect(createApiClient({ fetch }).bulkIssue(1, 5, KEY)).resolves.toEqual(run);
+
+      const [url, init] = fetch.mock.calls[0]!;
+      expect(url).toBe('/api/tenants/1/courses/5/bulk-issue');
+      expect(init?.method).toBe('POST');
+      expect(new Headers(init?.headers).get('idempotency-key')).toBe(KEY);
+    });
+
+    it('bulkIssue refuses a key that is not a UUID without sending anything', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>();
+      await expect(createApiClient({ fetch }).bulkIssue(1, 5, 'abc')).rejects.toThrow();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('bulkIssue surfaces a 422 as ApiError and a network failure as status 0', async () => {
+      const reused = async () =>
+        json({ error: { code: 'IDEMPOTENCY_KEY_REUSED', message: 'Key used for another course' } }, 422);
+      await expect(createApiClient({ fetch: reused }).bulkIssue(1, 5, KEY)).rejects.toMatchObject({
+        status: 422,
+        code: 'IDEMPOTENCY_KEY_REUSED',
+        message: 'Key used for another course',
+      });
+
+      const offline = async () => {
+        throw new TypeError('Failed to fetch');
+      };
+      await expect(createApiClient({ fetch: offline }).bulkIssue(1, 5, KEY)).rejects.toMatchObject({
+        status: 0,
+      });
+    });
+
+    it('getRun GETs the run route and unwraps the run', async () => {
+      const run = buildRun(3);
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json({ run }));
+
+      await expect(createApiClient({ fetch }).getRun(1, RUN_ID)).resolves.toEqual(run);
+
+      expect(fetch.mock.calls[0]![0]).toBe(`/api/tenants/1/bulk-issue-runs/${RUN_ID}`);
+    });
+
+    it('getRun rejects a body that does not match the run schema', async () => {
+      const fetch = async () => json({ run: { id: 1 } });
+      await expect(createApiClient({ fetch }).getRun(1, 1)).rejects.toMatchObject({
+        code: 'INVALID_RESPONSE',
+      });
+    });
   });
 });

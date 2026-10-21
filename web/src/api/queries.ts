@@ -28,3 +28,9 @@ export const coursesQuery = (tid: number) =>
     queryKey: tenantKey(tid, 'courses'),
     queryFn: () => api.listCourses(tid),
   });
+
+export const runQuery = (tid: number, runId: number) =>
+  queryOptions({
+    queryKey: tenantKey(tid, 'bulk-issue-runs', runId),
+    queryFn: () => api.getRun(tid, runId),
+  });
