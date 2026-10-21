@@ -1,10 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { z } from 'zod';
-import { adminsResponseSchema, signInRequestSchema } from '@cac/shared';
+import { adminsResponseSchema, meResponseSchema, signInRequestSchema } from '@cac/shared';
 import { NotFoundError } from '../../plugins/errors';
-import { findAdmin, listAdmins } from './repo';
-
-export const SESSION_COOKIE = 'cac_admin';
+import { requireAdmin, SESSION_COOKIE } from '../../plugins/session';
+import { findAdmin, listAdmins, listTenantsForAdmin } from './repo';
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   app.get(
@@ -27,5 +26,10 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   app.delete('/api/session', async (_request, reply) => {
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return reply.code(204).send();
+  });
+
+  app.get('/api/me', { schema: { response: { 200: meResponseSchema } } }, async (request) => {
+    const admin = requireAdmin(request);
+    return { admin, tenants: listTenantsForAdmin(app.db, admin.id) };
   });
 }

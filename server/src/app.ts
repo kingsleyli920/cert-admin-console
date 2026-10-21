@@ -4,6 +4,7 @@ import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
 import { sessionRoutes } from './modules/session/routes';
 import { registerErrorHandling } from './plugins/errors';
+import { registerSessionGuard } from './plugins/session';
 import { zodSerializerCompiler, zodValidatorCompiler } from './plugins/zod';
 
 export interface BuildAppOptions {
@@ -26,6 +27,7 @@ export async function buildApp(opts: BuildAppOptions) {
   app.setSerializerCompiler(zodSerializerCompiler);
   registerErrorHandling(app);
   await app.register(cookie);
+  registerSessionGuard(app);
 
   app.get(
     '/api/health',
