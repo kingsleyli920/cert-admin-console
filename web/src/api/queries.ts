@@ -23,6 +23,18 @@ export const certificatesQuery = (tid: number, query: CertificateListQuery) =>
     queryFn: () => api.listCertificates(tid, query),
   });
 
+/**
+ * Detail key: `['tenant', tid, 'certificates', 'detail', id]`. It sits under the list prefix
+ * `['tenant', tid, 'certificates']` so one prefix invalidation covers lists and details. It cannot
+ * collide with a list key `['tenant', tid, 'certificates', filters]`: there the 4th element is the
+ * filters object, never the string 'detail', and the detail key has a 5th element.
+ */
+export const certificateDetailQuery = (tid: number, id: number) =>
+  queryOptions({
+    queryKey: tenantKey(tid, 'certificates', 'detail', id),
+    queryFn: () => api.getCertificate(tid, id),
+  });
+
 export const coursesQuery = (tid: number) =>
   queryOptions({
     queryKey: tenantKey(tid, 'courses'),
