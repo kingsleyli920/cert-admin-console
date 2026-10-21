@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
+import { certificateRoutes } from './modules/certificates/routes';
 import { sessionRoutes } from './modules/session/routes';
 import { registerErrorHandling } from './plugins/errors';
 import { registerSessionGuard } from './plugins/session';
@@ -36,6 +37,7 @@ export async function buildApp(opts: BuildAppOptions) {
     async () => ({ status: 'ok' as const }),
   );
   await app.register(sessionRoutes);
+  await app.register(certificateRoutes);
   if (app.appEnv === 'test') await app.register(testResetRoute);
 
   return app;
