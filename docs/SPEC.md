@@ -246,6 +246,26 @@ Every case listed must have a matching test.
 | Detail / revoke | All fields complete. Empty reason → 400. Repeated revoke → 409 **(T7)**. Revoke writes an audit entry. The same UTC instant shows different dates in Sydney and Perth. Sydney abbreviations are correct under both DST and non-DST **(T5)**. |
 | Export | Row count equals list total (with filters) **(T6)**. Dates use the tenant timezone. Escaping and formula-injection protection. Full LCL export is streamed (chunked) and completes in under 3 seconds. Download the file on the page and verify the row count. |
 
+### 3.4 Tenant × admin × timezone matrix
+
+Tests must cover every combination below, not a single tenant or admin. Server tests use one shared table-driven helper, `ACCESS_MATRIX` (in `server/test/helpers/`), and every new tenant-scoped route is added to it.
+
+| Admin | Manages | Expected for every tenant-scoped route |
+|---|---|---|
+| `alice` (multi-tenant) | HHT (Sydney, DST), SRA (Perth), NHI (Brisbane) | HHT/SRA/NHI → allowed; LCL → 404 |
+| `carol` (second admin of HHT) | HHT only | HHT → allowed; SRA/LCL/NHI → 404 |
+| `bob` (single-tenant) | LCL (Sydney) | LCL → allowed; HHT/SRA/NHI → 404 |
+| no session | — | 401 |
+
+| Concern | Cases (milestone where the route lands) |
+|---|---|
+| Isolation | Every tenant-scoped route × every row of the admin table above, including non-existent and malformed tenant ids (404) and resources of another tenant addressed through an allowed tenant id (404). |
+| Same tenant, several admins | alice and carol see identical HHT data; audit records the acting admin (who issued / who revoked) (M4, M5); alice and carol bulk-issuing the same course concurrently → at most one certificate per learner (M4); carol revokes a certificate alice issued → detail shows both actors (M5). |
+| Multi-tenant admin | alice's tenant switcher lists exactly HHT/SRA/NHI; switching shows that tenant's timezone label and data with no stale rows from the previous tenant. |
+| Single-tenant admin | bob's switcher lists only LCL; opening any other tenant URL shows the 404 page. |
+| Timezones | The same UTC instant renders on different local dates in Sydney vs Perth; Sydney before/after the DST change shows AEDT/AEST; Brisbane always AEST; CSV `Issue Date` and its header use each tenant's own timezone (M6); serial `YYYY` uses the tenant-local year at the New Year boundary (M4). |
+| Learners | Same-name learners in different tenants never cross (Emma Wilson in HHT vs SRA); every learner state (completed / enrolled / inactive / valid cert / revoked cert) maps to its §1.3 outcome (M3 counts, M4 runs); a tenant with learners but zero certificates (NHI) shows the "no certificates yet" empty state (M3). |
+
 ---
 
 ## 4. Seed data
@@ -259,7 +279,7 @@ Deterministic seed. All ids and timestamps are fixed.
 | Large Corp Learning | LCL | Australia/Sydney | Exactly 8,000 certificates. Demonstrates pagination and export at scale. |
 | New Horizons Institute | NHI | Australia/Brisbane | Courses and enrollments but zero certificates. Demonstrates the "no certificates yet" empty state. |
 
-- Admins: `alice` "Alice Nguyen" (HHT + SRA + NHI), `bob` "Bob Fraser" (LCL). Tenant ids: HHT 1, SRA 2, LCL 3, NHI 4.
+- Admins: `alice` "Alice Nguyen" (HHT + SRA + NHI), `bob` "Bob Fraser" (LCL), `carol` "Carol Smith" (HHT only — a second admin of the same tenant). Tenant ids: HHT 1, SRA 2, LCL 3, NHI 4.
 - HHT and SRA each have an "Emma Wilson". These are two different learner records.
 - HHT has one certificate issued at `2026-04-04T14:30:00Z` (Sydney 2026-04-05 01:30 AEDT). SRA has one certificate at the same instant (Perth 2026-04-04 22:30 AWST).
 - HHT's "Fire Safety 2026" course has 16 learners:
