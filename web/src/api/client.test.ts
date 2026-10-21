@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildRun, RUN_ID } from '../test/bulkIssue';
+import { revokedHht, validHht } from '../test/certificateDetail';
 import { ApiError, createApiClient } from './client';
 
 const json = (body: unknown, status = 200) =>
@@ -232,6 +233,66 @@ describe('createApiClient', () => {
     await expect(createApiClient({ fetch }).listCourses(1)).resolves.toEqual(courses);
     expect(fetch.mock.calls[0]![0]).toBe('/api/tenants/1/courses');
   });
+  describe('certificate detail and revoke', () => {
+    it('getCertificate GETs the detail route and parses the audit trail', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json(revokedHht));
+
+      await expect(createApiClient({ fetch }).getCertificate(1, 101)).resolves.toEqual(revokedHht);
+
+      expect(fetch.mock.calls[0]![0]).toBe('/api/tenants/1/certificates/101');
+    });
+
+    it('getCertificate maps a 404 to ApiError and rejects a body missing the audit trail', async () => {
+      const missing = async () => json({ error: { code: 'NOT_FOUND', message: 'Not found' } }, 404);
+      await expect(createApiClient({ fetch: missing }).getCertificate(1, 9)).rejects.toMatchObject({
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+
+      const { audit: _audit, ...noAudit } = validHht;
+      const bad = async () => json(noAudit);
+      await expect(createApiClient({ fetch: bad }).getCertificate(1, 100)).rejects.toMatchObject({
+        code: 'INVALID_RESPONSE',
+      });
+    });
+
+    it('revokeCertificate POSTs the reason as JSON and returns the updated detail', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json(revokedHht));
+
+      await expect(
+        createApiClient({ fetch }).revokeCertificate(1, 100, 'Issued in error'),
+      ).resolves.toEqual(revokedHht);
+
+      const [url, init] = fetch.mock.calls[0]!;
+      expect(url).toBe('/api/tenants/1/certificates/100/revoke');
+      expect(init?.method).toBe('POST');
+      expect(new Headers(init?.headers).get('content-type')).toBe('application/json');
+      expect(JSON.parse(String(init?.body))).toEqual({ reason: 'Issued in error' });
+    });
+
+    it('revokeCertificate trims the reason and refuses an empty or too long one without sending', async () => {
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => json(revokedHht));
+      const api = createApiClient({ fetch });
+
+      await api.revokeCertificate(1, 100, '  padded  ');
+      expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ reason: 'padded' });
+
+      await expect(api.revokeCertificate(1, 100, '   ')).rejects.toThrow();
+      await expect(api.revokeCertificate(1, 100, 'x'.repeat(501))).rejects.toThrow();
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('revokeCertificate surfaces a 409 as ApiError with the ALREADY_REVOKED code', async () => {
+      const fetch = async () =>
+        json({ error: { code: 'ALREADY_REVOKED', message: 'Certificate already revoked' } }, 409);
+
+      await expect(createApiClient({ fetch }).revokeCertificate(1, 101, 'again')).rejects.toMatchObject({
+        status: 409,
+        code: 'ALREADY_REVOKED',
+      });
+    });
+  });
+
   describe('bulk issue', () => {
     const KEY = '3f2b8c1e-7a4d-4e6b-9c0a-1d2e3f4a5b6c';
 

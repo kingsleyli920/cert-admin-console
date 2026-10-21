@@ -4,7 +4,7 @@ import Fastify from 'fastify';
 import { healthResponseSchema } from '@cac/shared';
 import { bulkIssueRoutes } from './modules/bulk-issue/routes';
 import { BulkIssueRunner, type RunnerFaults } from './modules/bulk-issue/runner';
-import { certificateRoutes } from './modules/certificates/routes';
+import { certificateRoutes, type CertificateFaults } from './modules/certificates/routes';
 import { courseRoutes } from './modules/courses/routes';
 import { sessionRoutes } from './modules/session/routes';
 import { registerErrorHandling } from './plugins/errors';
@@ -20,6 +20,8 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** Test-only fault injection into the bulk-issue runner. */
   faults?: RunnerFaults;
+  /** Test-only fault injection into the certificate revoke transaction. */
+  certificateFaults?: CertificateFaults;
 }
 
 export async function buildApp(opts: BuildAppOptions) {
@@ -42,7 +44,7 @@ export async function buildApp(opts: BuildAppOptions) {
     async () => ({ status: 'ok' as const }),
   );
   await app.register(sessionRoutes);
-  await app.register(certificateRoutes);
+  await app.register(certificateRoutes, { faults: opts.certificateFaults });
   await app.register(courseRoutes);
   const runner = new BulkIssueRunner(app, opts.faults);
   // preClose (not onClose): the runner must stop before any onClose hook closes the database.

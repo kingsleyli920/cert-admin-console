@@ -1,13 +1,16 @@
 import {
   adminsResponseSchema,
   bulkIssueRunResponseSchema,
+  certificateDetailSchema,
   certificateListResponseSchema,
   coursesResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
   idempotencyKeySchema,
   meResponseSchema,
+  revokeRequestSchema,
   type BulkIssueRun,
+  type CertificateDetail,
   type CertificateListQuery,
   type CertificateListResponse,
   type HealthResponse,
@@ -106,6 +109,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         `/api/tenants/${tid}/certificates${toQueryString(query)}`,
         certificateListResponseSchema,
       ),
+    getCertificate: (tid: number, id: number): Promise<CertificateDetail> =>
+      request(`/api/tenants/${tid}/certificates/${id}`, certificateDetailSchema),
+    /** The reason is trimmed and validated like the server does (1-500 chars) before anything is sent. */
+    revokeCertificate: async (tid: number, id: number, reason: string): Promise<CertificateDetail> => {
+      const body = revokeRequestSchema.parse({ reason });
+      return request(`/api/tenants/${tid}/certificates/${id}/revoke`, certificateDetailSchema, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    },
     listCourses: (tid: number): Promise<CoursesResponse> =>
       request(`/api/tenants/${tid}/courses`, coursesResponseSchema),
     /** Starts a run (202). The same key replays the same run, so network retries are safe. */
