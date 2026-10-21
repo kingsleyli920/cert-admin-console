@@ -1,5 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { AuditEntry, CertificateDetail, CertificateListItem, CertificateListQuery } from '@cac/shared';
+import { ConflictError, NotFoundError } from '../../plugins/errors';
+import { inTransaction } from '../../db/tx';
 import { buildCertificateQuery } from './query';
 
 interface ListRow {
@@ -141,4 +143,56 @@ export function getCertificateDetail(
       }),
     ),
   };
+}
+
+export interface RevokeInput {
+  actorId: string;
+  /** UTC ISO timestamp, used for both `revoked_at` and the audit row. */
+  at: string;
+  reason: string;
+  /** Test-only: runs inside the transaction after the UPDATE, right before the audit INSERT. */
+  beforeAudit?: () => void;
+}
+
+/**
+ * Revokes a valid certificate and writes its REVOKE audit row in ONE transaction
+ * (SPEC §2.6 #1). The conditional UPDATE (`status = 'valid'`) decides the winner, so concurrent
+ * revokes are safe without a prior SELECT. Throws `ConflictError` (409) when the certificate
+ * is already revoked and `NotFoundError` (404) when it does not exist in this tenant.
+ * Returns the updated detail.
+ */
+export function revokeCertificate(
+  db: DatabaseSync,
+  tenantId: number,
+  certificateId: number,
+  input: RevokeInput,
+): CertificateDetail {
+  inTransaction(db, () => {
+    const res = db
+      .prepare(
+        `UPDATE certificates
+            SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoke_reason = ?
+          WHERE id = ? AND tenant_id = ? AND status = 'valid'`,
+      )
+      .run(input.at, input.actorId, input.reason, certificateId, tenantId);
+    if (res.changes === 0) {
+      // Only reached on the failure path: tell "already revoked" from "no such certificate".
+      const exists = db.prepare('SELECT 1 FROM certificates WHERE id = ? AND tenant_id = ?').get(certificateId, tenantId);
+      throw exists ? new ConflictError() : new NotFoundError('Certificate not found');
+    }
+    input.beforeAudit?.();
+    insertRevokeAudit(db, tenantId, certificateId, input.actorId, input.at);
+  });
+  const detail = getCertificateDetail(db, tenantId, certificateId);
+  if (!detail) throw new NotFoundError('Certificate not found');
+  return detail;
+}
+
+function insertRevokeAudit(db: DatabaseSync, tenantId: number, certificateId: number, actorId: string, at: string): void {
+  // course_id / learner_id are copied from the certificate row, scoped to the tenant.
+  db.prepare(
+    `INSERT INTO audit_logs (tenant_id, actor_id, action, certificate_id, course_id, learner_id, run_id, created_at)
+     SELECT c.tenant_id, ?, 'REVOKE', c.id, c.course_id, c.learner_id, NULL, ?
+       FROM certificates c WHERE c.id = ? AND c.tenant_id = ?`,
+  ).run(actorId, at, certificateId, tenantId);
 }
